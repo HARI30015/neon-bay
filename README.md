@@ -1,0 +1,47 @@
+# Neon Bay — Realistic Beachfront City Game
+
+A browser-playable 3D open-world city game. No download, no login, no install
+required to play — open the game link and press START PLAYING.
+
+## Play it
+
+- Render (public link): https://neon-bay.onrender.com
+- GitHub Pages: https://hari30015.github.io/neon-bay/
+
+## Install it
+
+On the game's start screen, use the INSTALL GAME button. If your browser
+does not offer a one-tap install, use its menu instead:
+
+- Android Chrome: menu → Install app
+- iPhone / iPad Safari: Share → Add to Home Screen
+- Desktop Chrome / Edge: address-bar install icon
+
+Once installed, the game opens fullscreen from your home screen / app list.
+
+## What is in this repo
+
+- `index.html` — the whole game in one file (about 3.8 MB). It contains the
+  city, buildings, interiors, landmarks, cars, people, jobs, police, camera
+  views and install support. That is why there are no separate source folders:
+  the game was built as a single-file web game.
+- `.nojekyll` — intentionally empty. It is a marker file that tells GitHub
+  Pages to serve these files as-is, without Jekyll processing.
+- `README.md` — this file.
+
+## How to play
+
+- WASD move · Shift run · Space jump
+- E enter / exit a car · in a car: WASD drive, Space handbrake
+- E at a glowing building door — go inside · inside, E at the EXIT door — back out
+- C or the CAMERA button — change camera view (Follow, Top, Side, Front, First-person)
+- On a phone, use the on-screen buttons.
+
+## What is in the game
+
+- A realistic beachfront city: modern apartment blocks, a tall white tower,
+  a twisting blue-glass spire and a Parliament-style landmark.
+- All 35 buildings are enterable, with furnished interiors.
+- World Landmarks Park, north of the city: Eiffel Tower, Big Ben, Statue of
+  Liberty, Sydney Opera House, Leaning Tower of Pisa, Colosseum, London Eye.
+- Three jobs, cash and respect, police and wanted stars, day-night cycle.
