@@ -45,7 +45,7 @@
   .plate { background: var(--plate); border: 1px solid var(--plate-line); border-radius: 6px; backdrop-filter: blur(3px); }
 
   #hud-top {
-    position: absolute; top: calc(8px + env(safe-area-inset-top)); left: 10px; right: 10px;
+    position: absolute; top: calc(8px + env(safe-area-inset-top)); left: 74px; right: 74px;
     display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
   }
   #money-box { padding: 7px 12px 8px; min-width: 118px; }
@@ -128,6 +128,192 @@
     #touch { display: none !important; }
   }
 
+  /* ---------- Left side: SEPARATE map and profile ---------- */
+  /* Map and profile are separate now: two small round buttons stacked at
+     the top left. The MAP button opens only the total city map panel on
+     the left; the PROFILE button opens only the player's profile panel.
+     Opening one closes the other, so each stays on its own. Tapping a
+     button again hides its panel, leaving the game view clear. */
+  .side-toggle {
+    position: fixed; left: 10px; z-index: 28;
+    width: 54px; height: 54px; border-radius: 50%; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 0;
+    background: rgba(10, 12, 26, .88); border: 2px solid var(--cyan); color: var(--ink);
+    box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 14px rgba(25,211,230,.35);
+    cursor: pointer; pointer-events: auto; padding: 0; font-family: inherit;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .side-toggle:active { transform: scale(.96); }
+  .side-toggle .side-toggle-label {
+    font-size: 7.5px; font-weight: 800; letter-spacing: .14em; color: var(--cyan);
+    line-height: 1; margin-top: 1px; margin-left: .14em; white-space: nowrap;
+  }
+  .side-toggle .side-toggle-close { display: none; }
+  .side-toggle.is-open { border-color: var(--pink); background: rgba(40, 8, 26, .92); box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 14px rgba(255,46,136,.35); }
+  .side-toggle.is-open .side-toggle-open { display: none; }
+  .side-toggle.is-open .side-toggle-close { display: block; }
+  .side-toggle.is-open .side-toggle-label { color: #ff8fbe; }
+  .side-toggle .side-toggle-dot {
+    position: absolute; top: 3px; right: 3px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--pink); border: 2px solid #0a0c1a;
+  }
+  .side-toggle.is-open .side-toggle-dot { display: none; }
+  #map-toggle { top: calc(8px + env(safe-area-inset-top)); }
+  #profile-toggle { top: calc(70px + env(safe-area-inset-top)); border-color: var(--amber); box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 14px rgba(255,176,32,.3); }
+  #profile-toggle .side-toggle-label { color: var(--amber); font-size: 6.5px; }
+  #profile-toggle.is-open { border-color: var(--pink); }
+  #profile-toggle.is-open .side-toggle-label { color: #ff8fbe; }
+  /* Settings button — top right corner, its own round gear button */
+  #settings-toggle {
+    position: fixed; right: 10px; top: calc(8px + env(safe-area-inset-top)); z-index: 28;
+    width: 54px; height: 54px; border-radius: 50%; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 0;
+    background: rgba(10, 12, 26, .88); border: 2px solid rgba(255,255,255,.55); color: var(--ink);
+    box-shadow: 0 6px 20px rgba(0,0,0,.5);
+    cursor: pointer; pointer-events: auto; padding: 0; font-family: inherit;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  #settings-toggle:active { transform: scale(.96); }
+  #settings-toggle .side-toggle-label {
+    font-size: 6.5px; font-weight: 800; letter-spacing: .12em; color: rgba(244,241,234,.85);
+    line-height: 1; margin-top: 1px; margin-left: .12em; white-space: nowrap;
+  }
+  #settings-toggle.is-open { border-color: var(--pink); background: rgba(40, 8, 26, .92); box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 14px rgba(255,46,136,.35); }
+  /* The two separate left panels: map-only and profile-only */
+  .side-ui {
+    position: fixed; left: 10px; top: calc(134px + env(safe-area-inset-top)); z-index: 27; display: none;
+    width: 302px; max-height: calc(100dvh - 146px - env(safe-area-inset-top)); overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: thin; padding-bottom: 2px;
+  }
+  .side-ui.open {
+    display: block; pointer-events: auto;
+    animation: dock-in .22s ease;
+  }
+  @keyframes dock-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: translateX(0); } }
+  @media (prefers-reduced-motion: reduce) { .side-ui.open { animation: none; } }
+  .side-ui > * { margin-bottom: 8px; }
+  .side-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 10px 7px 12px;
+  }
+  .side-bar span { font-size: 10px; font-weight: 800; letter-spacing: .16em; color: var(--ink-dim); }
+  .side-bar span b { color: var(--cyan); }
+  #profile-ui .side-bar span b { color: var(--amber); }
+  .side-close {
+    cursor: pointer; pointer-events: auto; border: 1px solid var(--plate-line); border-radius: 999px;
+    background: rgba(255,255,255,.07); color: var(--ink); font-family: inherit;
+    font-size: 10px; font-weight: 800; letter-spacing: .08em; padding: 5px 11px; white-space: nowrap;
+  }
+  .side-close:active { background: rgba(255,46,136,.4); }
+  /* On wider screens, while either left panel is open the cash / wanted
+     plates start after it, so nothing overlaps the map or the profile. */
+  @media (min-width: 920px) {
+    body.dock-open #hud-top { left: 322px; }
+    body.dock-open #mission-banner, body.dock-open #inside-label { left: calc(50% + 150px); }
+  }
+  /* Player profile card (in the separate profile panel) */
+  #dock-profile { padding: 10px 12px 11px; cursor: pointer; }
+  .dock-prof-top { display: flex; gap: 11px; align-items: center; }
+  .dock-prof-txt { min-width: 0; flex: 1; }
+  #dock-name { font-size: 16px; font-weight: 800; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #dock-rank { font-size: 11.5px; color: var(--cyan); font-weight: 700; margin-top: 2px; letter-spacing: .03em; }
+  #dock-open { font-size: 9px; font-weight: 800; letter-spacing: .16em; color: var(--ink-dim); white-space: nowrap; }
+  .dock-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 9px; }
+  .dock-stat { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 5px 8px 6px; min-width: 0; }
+  .dock-stat small { display: block; font-size: 8.5px; letter-spacing: .18em; color: rgba(244,241,234,.55); margin-bottom: 1px; }
+  .dock-stat b { font-size: 13.5px; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .dock-stat b.green { color: #7dff9a; }
+  .dock-stat b.amber { color: var(--amber); }
+  /* Total map (in the separate map panel) */
+  #minimap-box { padding: 8px 9px 9px; cursor: pointer; }
+  #minimap-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 10px; font-weight: 800; letter-spacing: .18em; color: var(--ink-dim); margin-bottom: 6px; }
+  #minimap-head b { color: var(--cyan); font-weight: 800; }
+  #minimap { width: 100%; height: auto; display: block; border-radius: 4px; background: #1c2333; }
+  #minimap-loc { font-size: 11.5px; color: var(--ink-dim); margin-top: 6px; line-height: 1.45; }
+  #minimap-loc b { color: var(--ink); }
+  #minimap-target { font-size: 11px; color: var(--ink-dim); margin-top: 2px; line-height: 1.45; }
+  #minimap-target b { color: #7dff9a; }
+  .dock-legend { display: flex; flex-wrap: wrap; gap: 3px 11px; font-size: 10px; color: rgba(244,241,234,.72); margin-top: 6px; line-height: 1.5; }
+  .dock-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+  .dock-legend i.sq { border-radius: 2px; }
+  #minimap-hint { font-size: 9px; letter-spacing: .14em; color: var(--cyan); margin-top: 5px; }
+  /* Phones: the separate panels stay on the left but slimmer and
+     height-capped, so the steering buttons stay clear and tappable. */
+  @media (max-width: 919px) {
+    .side-toggle { width: 50px; height: 50px; }
+    #profile-toggle { top: calc(66px + env(safe-area-inset-top)); }
+    #settings-toggle { width: 50px; height: 50px; }
+    #hud-top { left: 68px; right: 68px; }
+    body.dock-open #hud-top { left: 68px; }
+    .side-ui { width: min(212px, 54vw); max-height: 52dvh; top: calc(124px + env(safe-area-inset-top)); }
+    #dock-name { font-size: 14px; }
+    .dock-stat b { font-size: 12.5px; }
+    #dock-open { display: none; }
+  }
+  #map-ui-btns { display: flex; gap: 6px; margin-top: 6px; }
+  .map-ui-btn {
+    flex: 1; cursor: pointer; pointer-events: auto; padding: 8px 2px; border-radius: 6px;
+    background: var(--plate); border: 1px solid var(--plate-line); color: var(--ink);
+    font-family: inherit; font-size: 10px; font-weight: 800; letter-spacing: .06em; white-space: nowrap;
+  }
+  .map-ui-btn:active { background: rgba(255,46,136,.4); }
+  #bag-badge { background: var(--pink); color: #fff; border-radius: 999px; padding: 0 6px; margin-left: 2px; font-size: 10px; }
+  #boost-line { display: none; margin-top: 6px; font-size: 10.5px; font-weight: 700; color: #7dff9a; letter-spacing: .04em; }
+  #map-panel, #profile-panel, #settings-panel {
+    position: fixed; inset: 0; z-index: 31; display: none; align-items: flex-end; justify-content: center;
+    background: rgba(3,0,10,.72); padding: 14px;
+  }
+  #map-panel.open, #profile-panel.open, #settings-panel.open { display: flex; }
+  @media (min-width: 640px) { #map-panel, #profile-panel, #settings-panel { align-items: center; } }
+  /* Settings rows */
+  .set-row { margin-top: 16px; }
+  .set-row:first-of-type { margin-top: 8px; }
+  .set-label { font-size: 11px; font-weight: 800; letter-spacing: .18em; color: var(--ink-dim); margin-bottom: 7px; }
+  .set-label b { color: var(--ink); font-size: 13px; letter-spacing: .02em; display: block; margin-top: 2px; }
+  .set-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .set-opt {
+    cursor: pointer; pointer-events: auto; border: 1px solid var(--plate-line); border-radius: 999px;
+    background: rgba(255,255,255,.06); color: var(--ink); font-family: inherit;
+    font-size: 12.5px; font-weight: 700; padding: 8px 14px; white-space: nowrap;
+  }
+  .set-opt:active { background: rgba(255,46,136,.35); }
+  .set-opt.on { background: var(--cyan); border-color: var(--cyan); color: #06222a; }
+  .set-note { font-size: 12px; color: rgba(244,241,234,.6); line-height: 1.5; margin-top: 6px; }
+  #bigmap { width: 100%; height: auto; display: block; border-radius: 8px; background: #1c2333; border: 1px solid rgba(255,255,255,.14); }
+  .legend { display: flex; flex-wrap: wrap; gap: 5px 14px; font-size: 12px; color: rgba(244,241,234,.75); margin-top: 10px; line-height: 1.5; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .legend i.sq { border-radius: 2px; }
+  .prof-head { display: flex; gap: 16px; align-items: center; margin-top: 6px; }
+  .prof-head-txt { min-width: 0; }
+  #prof-name {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); color: #fff;
+    border-radius: 6px; padding: 6px 9px; font: inherit; font-weight: 800; font-size: 17px; width: min(230px, 54vw);
+  }
+  #prof-rank { font-size: 13px; color: var(--cyan); font-weight: 700; margin-top: 5px; letter-spacing: .03em; }
+  #prof-wearing { font-size: 12px; color: rgba(244,241,234,.66); margin-top: 3px; line-height: 1.45; }
+  .prof-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  @media (min-width: 560px) { .prof-stats { grid-template-columns: 1fr 1fr 1fr; } }
+  .stat { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 8px 11px; }
+  .stat small { display: block; font-size: 9px; letter-spacing: .18em; color: rgba(244,241,234,.55); margin-bottom: 2px; }
+  .stat b { font-size: 15.5px; line-height: 1.25; }
+  .panel-h3 { margin: 18px 0 2px; font-size: 15px; letter-spacing: .02em; }
+  .panel-h3 span { color: var(--cyan); font-size: 12.5px; font-weight: 700; }
+  .bag-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+  @media (min-width: 560px) { .bag-grid { grid-template-columns: 1fr 1fr; } }
+  .bag-item { display: flex; gap: 11px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px 11px; align-items: flex-start; }
+  .bag-item svg { width: 27px; height: 27px; flex: none; color: var(--cyan); margin-top: 1px; }
+  .bag-item h4 { margin: 0; font-size: 13.5px; }
+  .bag-item h4 .qty { color: var(--amber); font-size: 12px; }
+  .bag-item p { margin: 2px 0 8px; font-size: 12px; color: rgba(244,241,234,.66); line-height: 1.45; }
+  .bag-item .use-btn {
+    cursor: pointer; border: 1px solid rgba(25,211,230,.55); background: rgba(25,211,230,.12); color: #fff;
+    border-radius: 6px; padding: 5px 13px; font-family: inherit; font-weight: 700; font-size: 12px;
+  }
+  .bag-item .use-btn:disabled { opacity: .35; cursor: default; }
+  .bag-item.empty-slot { border-style: dashed; opacity: .75; }
+  .job-line { font-size: 13px; color: rgba(244,241,234,.85); line-height: 1.7; }
+  .job-line .done { color: #7dff9a; font-weight: 700; }
+
   /* ---------- Start / end cards ---------- */
   .screen {
     position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
@@ -145,9 +331,22 @@
     margin: 10px 0 0; font-size: clamp(12px, 3.4vw, 17px); letter-spacing: .30em; color: #eaf4ff;
     text-transform: uppercase; text-shadow: 0 1px 10px rgba(0,0,0,.5);
   }
-  .story { max-width: 520px; margin: 18px 0 4px; font-size: 15px; line-height: 1.55; color: rgba(244,241,234,.92); text-shadow: 0 1px 8px rgba(8,16,28,.8), 0 0 2px rgba(8,16,28,.8); }
-  .keys-help { margin: 12px 0 0; font-size: 12.5px; line-height: 1.9; color: rgba(244,241,234,.78); text-shadow: 0 1px 6px rgba(8,16,28,.85); }
-  .keys-help b { color: var(--ink); background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 4px; padding: 1px 7px; font-weight: 700; }
+  .controls-card {
+    margin: 22px 0 0; width: min(460px, 92vw); text-align: left;
+    background: rgba(10,12,26,.82); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 12px; padding: 16px 18px 12px; backdrop-filter: blur(6px);
+    box-shadow: 0 18px 44px rgba(0,0,0,.45);
+  }
+  .controls-title { font-size: 11px; font-weight: 800; letter-spacing: .28em; color: var(--cyan); text-align: center; margin-bottom: 8px; }
+  .control-row { display: flex; gap: 14px; align-items: center; padding: 7px 0; font-size: 14px; line-height: 1.4; color: rgba(244,241,234,.94); }
+  .control-row + .control-row { border-top: 1px solid rgba(255,255,255,.08); }
+  .control-keys { flex: none; width: 132px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .control-keys b {
+    color: var(--ink); background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.28);
+    border-radius: 4px; padding: 1px 7px; font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  }
+  .controls-phone { margin: 10px 0 2px; font-size: 12.5px; color: rgba(244,241,234,.68); text-align: center; line-height: 1.5; }
+  @media (max-width: 480px) { .control-keys { width: 112px; } .control-row { font-size: 13.5px; gap: 10px; } }
   .big-btn {
     pointer-events: auto; cursor: pointer; margin-top: 22px; border: 0; border-radius: 8px;
     background: linear-gradient(180deg, #ff5aa5, #e01e74); color: #fff;
@@ -238,25 +437,242 @@
 
 <button id="btn-view" type="button"><small>CAMERA · TAP OR PRESS C</small><span id="view-name">Follow view</span> — tap to change</button>
 
+<button id="map-toggle" class="side-toggle" type="button" aria-label="Show the total city map" aria-expanded="false" aria-controls="map-ui" title="Total map — on its own">
+  <svg class="side-toggle-open" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#19d3e6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M12 21.2s-6.6-5.3-6.6-10.3a6.6 6.6 0 1 1 13.2 0c0 5-6.6 10.3-6.6 10.3z" fill="rgba(25,211,230,.14)"/>
+    <circle cx="12" cy="10.2" r="2.6" fill="#fff" stroke="none"/>
+  </svg>
+  <svg class="side-toggle-close" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+    <path d="M5 5 L19 19 M19 5 L5 19"/>
+  </svg>
+  <span class="side-toggle-label">MAP</span>
+  <span class="side-toggle-dot" aria-hidden="true"></span>
+</button>
+
+<button id="profile-toggle" class="side-toggle" type="button" aria-label="Show your profile" aria-expanded="false" aria-controls="profile-ui" title="Your profile — on its own">
+  <svg class="side-toggle-open" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#ffb020" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8.2" r="3.6" fill="rgba(255,176,32,.16)"/>
+    <path d="M4.8 20.2c.9-3.9 3.8-6 7.2-6s6.3 2.1 7.2 6"/>
+  </svg>
+  <svg class="side-toggle-close" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+    <path d="M5 5 L19 19 M19 5 L5 19"/>
+  </svg>
+  <span class="side-toggle-label">PROFILE</span>
+  <span class="side-toggle-dot" aria-hidden="true"></span>
+</button>
+
+<button id="settings-toggle" type="button" aria-label="Open game settings" aria-expanded="false" aria-controls="settings-panel" title="Settings">
+  <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#f4f1ea" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="3.2" fill="rgba(255,255,255,.14)"/>
+    <path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/>
+  </svg>
+  <span class="side-toggle-label">SET</span>
+</button>
+
+<div id="profile-ui" class="side-ui">
+  <div class="side-bar plate">
+    <span>YOUR <b>PROFILE</b></span>
+    <button class="side-close" id="profile-ui-close" type="button" aria-label="Hide your profile">✕ HIDE</button>
+  </div>
+  <div id="dock-profile" class="plate" role="button" aria-label="Open your full profile and backpack">
+    <div class="dock-prof-top">
+      <svg viewBox="0 0 90 118" width="40" height="52" aria-hidden="true" style="flex:none;">
+        <rect x="30" y="76" width="12" height="30" rx="4" fill="#2f4a73"/>
+        <rect x="48" y="76" width="12" height="30" rx="4" fill="#2f4a73"/>
+        <rect x="27" y="104" width="16" height="7" rx="3" fill="#f0efe9"/>
+        <rect x="47" y="104" width="16" height="7" rx="3" fill="#f0efe9"/>
+        <rect x="15" y="40" width="10" height="31" rx="5" fill="#c68642" transform="rotate(8 20 40)"/>
+        <rect x="65" y="40" width="10" height="31" rx="5" fill="#c68642" transform="rotate(-8 70 40)"/>
+        <path d="M28 38 Q45 32 62 38 L66 79 L24 79 Z" fill="#e2493b"/>
+        <rect x="24" y="52" width="42" height="27" rx="4" fill="#27354e" opacity="0.92"/>
+        <path d="M36 41 Q45 53 54 41" stroke="#d8a92c" stroke-width="3" fill="none"/>
+        <circle cx="45" cy="24" r="14" fill="#c68642"/>
+        <path d="M31 25 Q29 9 45 9 Q61 9 59 25 L59 19 Q45 12 31 19 Z" fill="#191410"/>
+        <rect x="33" y="21" width="24" height="7" rx="3" fill="#14161a"/>
+      </svg>
+      <div class="dock-prof-txt">
+        <div id="dock-name">Beachfront Runner</div>
+        <div id="dock-rank">Rookie · Respect 0</div>
+      </div>
+      <div id="dock-open">PROFILE<br/>TAP · P</div>
+    </div>
+    <div class="dock-stats">
+      <div class="dock-stat"><small>CASH</small><b class="green" id="dock-cash">$0</b></div>
+      <div class="dock-stat"><small>WANTED</small><b class="amber" id="dock-wanted">Clear</b></div>
+      <div class="dock-stat"><small>YOU ARE</small><b id="dock-mode">On foot</b></div>
+      <div class="dock-stat"><small>CITY TIME</small><b id="dock-time">18:00</b></div>
+    </div>
+  </div>
+  <div id="map-ui-btns">
+    <button class="map-ui-btn" id="btn-profile" type="button">FULL PROFILE · P</button>
+    <button class="map-ui-btn" id="btn-bag" type="button">BACKPACK · B <span id="bag-badge">5</span></button>
+  </div>
+  <div id="boost-line"></div>
+</div>
+
+<div id="map-ui" class="side-ui">
+  <div class="side-bar plate">
+    <span>TOTAL <b>MAP</b> · NEON BAY</span>
+    <button class="side-close" id="map-ui-close" type="button" aria-label="Hide the total city map">✕ HIDE</button>
+  </div>
+  <div id="minimap-box" class="plate" role="button" aria-label="Total map of Neon Bay — tap to open it even bigger">
+    <div id="minimap-head"><span>TOTAL MAP · NEON BAY</span><b>N ↑</b></div>
+    <canvas id="minimap" width="600" height="480"></canvas>
+    <div id="minimap-loc">You are at <b>—</b></div>
+    <div id="minimap-target"></div>
+    <div class="dock-legend">
+      <span><i style="background:#fff; box-shadow:0 0 0 2px #ff2e88;"></i>You</span>
+      <span><i style="background:#7dff9a;"></i>Target</span>
+      <span><i style="background:#ff2e88;"></i>Package</span>
+      <span><i style="background:#19d3e6;"></i>Race</span>
+      <span><i style="background:#ffb020;"></i>Taxi / landmarks</span>
+      <span><i style="background:#e2493b;"></i>Your car</span>
+      <span><i class="sq" style="background:#9aa3b2;"></i>Doors</span>
+      <span><i style="background:#ffd34d;"></i>Your home</span>
+      <span><i style="background:#141519; box-shadow:0 0 0 1px #fff;"></i>Supercar</span>
+    </div>
+    <div id="minimap-hint">WHOLE CITY — LANDMARKS PARK (TOP) TO OCEAN (BOTTOM) · TAP TO ENLARGE · M</div>
+  </div>
+</div>
+
+<div id="map-panel" role="dialog" aria-modal="true" aria-labelledby="map-title">
+  <div class="gh-card">
+    <h2 id="map-title">Neon Bay <span>city map</span></h2>
+    <p id="bigmap-loc" style="margin-top:2px;">You are at <b>—</b></p>
+    <canvas id="bigmap" width="880" height="704"></canvas>
+    <div class="legend">
+      <span><i style="background:#fff; box-shadow:0 0 0 2px #ff2e88;"></i>You</span>
+      <span><i style="background:#7dff9a;"></i>Mission target</span>
+      <span><i style="background:#ff2e88;"></i>Package job</span>
+      <span><i style="background:#19d3e6;"></i>Race job</span>
+      <span><i style="background:#ffb020;"></i>Taxi job / landmarks</span>
+      <span><i style="background:#e2493b;"></i>Your car</span>
+      <span><i style="background:#4d7dd1;"></i>Your bike / police</span>
+      <span><i class="sq" style="background:#9aa3b2;"></i>Building doors</span>
+      <span><i style="background:#ffd34d;"></i>Your home (east)</span>
+      <span><i style="background:#141519; box-shadow:0 0 0 1px #fff;"></i>Your supercar</span>
+    </div>
+    <p style="font-size:12.5px;">North is up: the World Landmarks Park is at the top, the beach and ocean at the bottom. Your white arrow turns as you move — in a vehicle it follows the vehicle.</p>
+    <div class="gh-row" style="justify-content:flex-start;">
+      <button class="gh-btn primary" id="close-map" type="button">Close — back to game</button>
+    </div>
+  </div>
+</div>
+
+<div id="profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+  <div class="gh-card">
+    <h2 id="profile-title">Your <span>profile &amp; backpack</span></h2>
+    <div class="prof-head">
+      <svg viewBox="0 0 90 118" width="72" height="94" aria-hidden="true" style="flex:none;">
+        <rect x="30" y="76" width="12" height="30" rx="4" fill="#2f4a73"/>
+        <rect x="48" y="76" width="12" height="30" rx="4" fill="#2f4a73"/>
+        <rect x="27" y="104" width="16" height="7" rx="3" fill="#f0efe9"/>
+        <rect x="47" y="104" width="16" height="7" rx="3" fill="#f0efe9"/>
+        <rect x="15" y="40" width="10" height="31" rx="5" fill="#c68642" transform="rotate(8 20 40)"/>
+        <rect x="65" y="40" width="10" height="31" rx="5" fill="#c68642" transform="rotate(-8 70 40)"/>
+        <path d="M28 38 Q45 32 62 38 L66 79 L24 79 Z" fill="#e2493b"/>
+        <rect x="24" y="52" width="42" height="27" rx="4" fill="#27354e" opacity="0.92"/>
+        <path d="M36 41 Q45 53 54 41" stroke="#d8a92c" stroke-width="3" fill="none"/>
+        <circle cx="45" cy="24" r="14" fill="#c68642"/>
+        <path d="M31 25 Q29 9 45 9 Q61 9 59 25 L59 19 Q45 12 31 19 Z" fill="#191410"/>
+        <rect x="33" y="21" width="24" height="7" rx="3" fill="#14161a"/>
+      </svg>
+      <div class="prof-head-txt">
+        <input id="prof-name" value="Beachfront Runner" maxlength="18" aria-label="Your name in Neon Bay" />
+        <div id="prof-rank">Rookie · Respect 0</div>
+        <div id="prof-wearing">Wearing: red tee, blue jeans, white shoes, sunglasses, gold chain, wrist watch — and the backpack below, packed for you.</div>
+      </div>
+    </div>
+    <div class="prof-stats">
+      <div class="stat"><small>CASH</small><b id="ps-cash">$0</b></div>
+      <div class="stat"><small>RESPECT</small><b id="ps-respect">Rookie</b></div>
+      <div class="stat"><small>WANTED</small><b id="ps-wanted">Clear</b></div>
+      <div class="stat"><small>YOU ARE</small><b id="ps-mode">On foot</b></div>
+      <div class="stat"><small>LOCATION</small><b id="ps-loc">—</b></div>
+      <div class="stat"><small>CITY TIME · CAMERA</small><b id="ps-misc">—</b></div>
+    </div>
+    <div class="panel-h3">Jobs</div>
+    <div id="ps-jobs"></div>
+    <div class="panel-h3" id="bag-section">Backpack — allocated to carry <span id="bag-cap"></span></div>
+    <div class="bag-grid" id="bag-grid"></div>
+    <div class="gh-row" style="justify-content:flex-start;">
+      <button class="gh-btn primary" id="close-profile" type="button">Close — back to game</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="gh-card">
+    <h2 id="settings-title">Game <span>settings</span></h2>
+    <p style="margin-top:2px;">Change how Neon Bay plays — every setting below takes effect right away, in this session.</p>
+    <div class="set-row">
+      <div class="set-label">SOUND<b>Game sounds &amp; engine</b></div>
+      <div class="set-opts" id="set-sound">
+        <button class="set-opt" type="button" data-set="sound" data-val="on">Sound ON</button>
+        <button class="set-opt" type="button" data-set="sound" data-val="off">Sound OFF</button>
+      </div>
+    </div>
+    <div class="set-row">
+      <div class="set-label">CAMERA<b>Camera angle</b></div>
+      <div class="set-opts" id="set-camera">
+        <button class="set-opt" type="button" data-set="camera" data-val="0">Follow</button>
+        <button class="set-opt" type="button" data-set="camera" data-val="1">Top</button>
+        <button class="set-opt" type="button" data-set="camera" data-val="2">Side</button>
+        <button class="set-opt" type="button" data-set="camera" data-val="3">Front</button>
+        <button class="set-opt" type="button" data-set="camera" data-val="4">First-person</button>
+      </div>
+      <p class="set-note">Same five angles as the C key / CAMERA button.</p>
+    </div>
+    <div class="set-row">
+      <div class="set-label">GRAPHICS<b>Picture quality</b></div>
+      <div class="set-opts" id="set-graphics">
+        <button class="set-opt" type="button" data-set="graphics" data-val="high">High — sharp + shadows</button>
+        <button class="set-opt" type="button" data-set="graphics" data-val="smooth">Smooth — faster, no shadows</button>
+      </div>
+      <p class="set-note">Pick Smooth if the game feels slow on your phone.</p>
+    </div>
+    <div class="set-row">
+      <div class="set-label">CITY TIME<b>How fast the day passes</b></div>
+      <div class="set-opts" id="set-time">
+        <button class="set-opt" type="button" data-set="time" data-val="0">Paused</button>
+        <button class="set-opt" type="button" data-set="time" data-val="1">Normal</button>
+        <button class="set-opt" type="button" data-set="time" data-val="6">Fast ×6</button>
+      </div>
+      <p class="set-note">Normal: 1 real second = 1 game minute, dusk to night as you play.</p>
+    </div>
+    <div class="set-row">
+      <div class="set-label">OPEN — SEPARATE<b>Map and profile, each on its own</b></div>
+      <div class="set-opts">
+        <button class="set-opt" type="button" id="set-open-map">Total map</button>
+        <button class="set-opt" type="button" id="set-open-profile">Profile &amp; backpack</button>
+      </div>
+    </div>
+    <div class="gh-row" style="justify-content:flex-start;">
+      <button class="gh-btn primary" id="close-settings" type="button">Close — back to game</button>
+    </div>
+  </div>
+</div>
+
 <div id="start-screen" class="screen">
   <h1 class="game-title">Neon Bay</h1>
-  <p class="game-sub">Beachfront District — Real City</p>
-  <p class="story">A real city built from your photos — modern white &amp; wood apartment blocks, a tall white tower with stacked balconies, a twisting blue-glass spire and a stone Parliament-style landmark with dome and spires. <b>Every building now opens:</b> walk to any glowing front door, press <b>E</b> and step into a real furnished interior — apartments with living rooms, kitchens, bedrooms and bathrooms, a hotel lobby and suite, a sky office and a grand banquet hall. Three jobs wait on the beachfront — earn cash, build respect… and try not to upset the police. <b>New:</b> the man you play is now a real-proportioned human — jointed knees and elbows that bend as he walks, a tapered body and a detailed face — and you can see him from every angle: press <b>C</b> (or tap CAMERA) to switch between follow, top-down, side, front and first-person views. Head north up the central path to the <b>World Landmarks Park</b> — the Eiffel Tower, Big Ben, the Statue of Liberty, the Sydney Opera House, the Leaning Tower of Pisa, the Colosseum and the slowly turning London Eye, all built as detailed 3D landmarks you can walk right around.</p>
-  <p class="keys-help">
-    <b>W A S D</b> move &nbsp;·&nbsp; <b>Shift</b> run &nbsp;·&nbsp; <b>Space</b> jump<br/>
-    <b>E</b> enter / exit car &nbsp;·&nbsp; in car: <b>W A S D</b> drive, <b>Space</b> handbrake<br/>
-    <b>E</b> at a glowing building door — go inside · inside, <b>E</b> at the EXIT door — back out<br/>
-    <b>C</b> or <b>V</b> change camera angle — follow · top · side · front · first-person<br/>
-    On a phone, use the on-screen buttons and the CAMERA button.
-  </p>
+  <div class="controls-card" aria-label="Game controls">
+    <div class="controls-title">CONTROLS</div>
+    <div class="control-row"><span class="control-keys"><b>W</b><b>A</b><b>S</b><b>D</b></span><span>Move · Drive</span></div>
+    <div class="control-row"><span class="control-keys"><b>Shift</b></span><span>Run</span></div>
+    <div class="control-row"><span class="control-keys"><b>Space</b></span><span>Jump · Handbrake in car</span></div>
+    <div class="control-row"><span class="control-keys"><b>E</b></span><span>Enter / exit car · Enter building</span></div>
+    <div class="control-row"><span class="control-keys"><b>C</b></span><span>Camera — Follow · Top · Side · Front · First-person</span></div>
+    <div class="control-row"><span class="control-keys"><b>M</b></span><span>Map</span></div>
+    <div class="control-row"><span class="control-keys"><b>P</b></span><span>Profile</span></div>
+    <div class="control-row"><span class="control-keys"><b>B</b></span><span>Backpack</span></div>
+    <div class="control-row"><span class="control-keys"><b>⚙ Top-right</b></span><span>Settings</span></div>
+    <p class="controls-phone">On a phone, use the on-screen buttons and the CAMERA button.</p>
+  </div>
   <button class="big-btn" id="start-btn">▶&nbsp; START PLAYING</button>
   <p id="install-note">✓ Neon Bay is installed — you are playing the app. Find it on your home screen / app list any time.</p>
   <div class="gh-row">
     <button class="gh-btn primary" id="install-btn" type="button">⬇&nbsp; INSTALL GAME — add to home screen</button>
-    <button class="gh-btn" id="open-github" type="button">⑂ Put it on my GitHub — free public web</button>
-    <a class="gh-btn" href="https://github.com/HARI30015" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex; align-items:center;">My GitHub: HARI30015 ↗</a>
   </div>
-  <p class="quality-note"><b>New — a real human hero &amp; five camera angles:</b> jointed knees and elbows, tapered body, detailed face · follow, top, side, front and first-person views (key <b>C</b> or the CAMERA button) · <b>World Landmarks Park (north):</b> Eiffel Tower · Big Ben · Statue of Liberty · Sydney Opera House · Leaning Tower of Pisa · Colosseum · London Eye · <b>Step inside:</b> all 35 buildings are enterable with real furnished interiors · White Tower, glass Neon Spire &amp; Parliament House · detailed cars, trees &amp; traffic lights</p>
 </div>
 
 <div id="install-panel" role="dialog" aria-modal="true" aria-labelledby="install-title">
@@ -348,7 +764,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // ---------- Renderer / scene ----------
   var canvas = document.getElementById("game");
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   // Adaptive quality: software renderers (e.g. headless SwiftShader) get a
   // lighter load so the page still captures/interacts; real GPUs keep full quality.
   try {
@@ -673,42 +1089,56 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   function towerFacadeTexture(floors) {
     var cacheKey = "tower_" + floors;
     if (facadeCache[cacheKey]) return facadeCache[cacheKey];
-    var c = document.createElement("canvas"); c.width = 384; c.height = 512;
-    var g = c.getContext("2d"); var W = 384, H = 512, fh = H / floors;
-    g.fillStyle = "#f1efe9"; g.fillRect(0, 0, W, H);
-    noiseOn(g, W, H, 420, 0.05);
-    // dark brick flank (left edge, like the photo)
-    g.fillStyle = "#4c423a"; g.fillRect(0, 0, 58, H);
-    g.strokeStyle = "rgba(0,0,0,0.35)"; g.lineWidth = 1;
-    for (var by = 0; by < H; by += 7) { g.beginPath(); g.moveTo(0, by); g.lineTo(58, by); g.stroke(); }
-    for (var bx2 = 0; bx2 < 58; bx2 += 14) { g.beginPath(); g.moveTo(bx2, 0); g.lineTo(bx2, H); g.stroke(); }
-    g.fillStyle = "rgba(255,255,255,0.10)"; g.fillRect(58, 0, 2, H);
+    var c = document.createElement("canvas"); c.width = 512; c.height = 768;
+    var g = c.getContext("2d"); var W = 512, H = 768, fh = H / floors;
+    g.fillStyle = "#f2f0ea"; g.fillRect(0, 0, W, H);
+    noiseOn(g, W, H, 2600, 0.05);
+    // faint rain-weathering streaks running down the white render
+    for (var ws = 0; ws < 26; ws++) {
+      var wx0 = 84 + Math.random() * (W - 94), ww0 = 2 + Math.random() * 5;
+      var wgr = g.createLinearGradient(0, 0, 0, H);
+      wgr.addColorStop(0, "rgba(90,95,100,0.10)"); wgr.addColorStop(1, "rgba(90,95,100,0)");
+      g.fillStyle = wgr; g.fillRect(wx0, 0, ww0, H * (0.35 + Math.random() * 0.6));
+    }
+    // panel joints on the white render
+    g.fillStyle = "rgba(0,0,0,0.08)";
+    for (var pj = 84; pj < W; pj += 86) g.fillRect(pj, 0, 1, H);
+    // dark brick flank (left edge, like the photo) — individual bricks
+    g.fillStyle = "#463c33"; g.fillRect(0, 0, 76, H);
+    var bh2 = 9, bw2 = 34;
+    for (var byy = 0, row = 0; byy < H; byy += bh2, row++) {
+      for (var bxx = -bw2 + (row % 2) * (bw2 / 2); bxx < 76; bxx += bw2) {
+        var sh = (Math.random() - 0.5) * 26;
+        g.fillStyle = "rgb(" + (96 + sh | 0) + "," + (78 + sh * 0.8 | 0) + "," + (62 + sh * 0.6 | 0) + ")";
+        g.fillRect(bxx + 1, byy + 1, bw2 - 2, bh2 - 2);
+      }
+    }
+    g.fillStyle = "rgba(255,255,255,0.10)"; g.fillRect(76, 0, 2, H);
     for (var f = 0; f < floors; f++) {
       var y0 = f * fh;
-      g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(58, y0 + fh - 3, W - 58, 3);
+      g.fillStyle = "rgba(0,0,0,0.16)"; g.fillRect(76, y0 + fh - 3, W - 76, 3);
+      g.fillStyle = "rgba(255,255,255,0.5)"; g.fillRect(76, y0 + fh - 2, W - 76, 1);
       for (var b = 0; b < 3; b++) {
-        var wx = 76 + b * 102, ww = 84, wh = fh - 13, wy = y0 + 6;
-        g.fillStyle = "#20262c"; g.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
-        var lit = Math.random();
-        if (lit < 0.4) {
-          var wg = g.createLinearGradient(wx, wy, wx, wy + wh);
-          wg.addColorStop(0, "#ffe9b0"); wg.addColorStop(1, "#d99a44");
-          g.fillStyle = wg; g.fillRect(wx, wy, ww, wh);
-        } else {
-          var wg2 = g.createLinearGradient(wx, wy, wx + ww, wy + wh);
-          wg2.addColorStop(0, "#b9d2e6"); wg2.addColorStop(0.5, "#46617c"); wg2.addColorStop(1, "#24384c");
-          g.fillStyle = wg2; g.fillRect(wx, wy, ww, wh);
-          g.fillStyle = "rgba(255,255,255,0.25)"; g.fillRect(wx + 7, wy + 3, 13, wh - 7);
-        }
+        var wx = 100 + b * 134, ww = 112, wh = fh - 15, wy = y0 + 6;
+        g.fillStyle = "#181d22"; g.fillRect(wx - 4, wy - 4, ww + 8, wh + 8);
+        g.fillStyle = "#2c333a"; g.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
+        paintGlass(g, wx, wy, ww, wh);
         g.fillStyle = "#14191e"; g.fillRect(wx + ww / 2 - 1, wy, 2, wh);
+        g.fillRect(wx, wy + wh * 0.34, ww, 2);
+        // pale stone sill + weather drip beneath
+        g.fillStyle = "#dcd9d0"; g.fillRect(wx - 4, wy + wh + 4, ww + 8, 3);
+        g.fillStyle = "rgba(70,75,80,0.13)"; g.fillRect(wx + ww * 0.3, wy + wh + 7, ww * 0.4, 9);
         // balcony slab + glass rail under the two right-hand windows
         if (b > 0) {
-          g.fillStyle = "rgba(30,34,38,0.85)"; g.fillRect(wx - 5, wy + wh + 2, ww + 10, 3);
-          g.fillStyle = "rgba(190,220,235,0.5)"; g.fillRect(wx - 5, wy + wh - 6, ww + 10, 6);
+          var railG = g.createLinearGradient(0, wy + wh - 9, 0, wy + wh + 2);
+          railG.addColorStop(0, "rgba(200,228,242,0.55)"); railG.addColorStop(1, "rgba(120,160,185,0.30)");
+          g.fillStyle = railG; g.fillRect(wx - 6, wy + wh - 9, ww + 12, 8);
+          g.fillStyle = "rgba(240,250,255,0.5)"; g.fillRect(wx - 6, wy + wh - 9, ww + 12, 1);
+          g.fillStyle = "rgba(30,34,38,0.85)"; g.fillRect(wx - 6, wy + wh + 1, ww + 12, 3);
         }
       }
     }
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
     facadeCache[cacheKey] = t; return t;
   }
 
@@ -716,31 +1146,68 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // rows of arched windows, cornices and carved banding.
   function heritageFacadeTexture() {
     if (facadeCache.heritage) return facadeCache.heritage;
-    var c = document.createElement("canvas"); c.width = 512; c.height = 256;
+    var c = document.createElement("canvas"); c.width = 1024; c.height = 512;
     var g = c.getContext("2d");
-    g.fillStyle = "#d9c49c"; g.fillRect(0, 0, 512, 256);
-    noiseOn(g, 512, 256, 900, 0.06);
-    g.fillStyle = "rgba(120,90,50,0.25)";
-    for (var y = 0; y < 256; y += 32) g.fillRect(0, y, 512, 2);
-    g.fillStyle = "#b89a68"; g.fillRect(0, 0, 512, 12); g.fillRect(0, 122, 512, 8); g.fillRect(0, 244, 512, 12);
-    g.fillStyle = "rgba(255,246,220,0.5)"; g.fillRect(0, 12, 512, 3); g.fillRect(0, 130, 512, 3);
-    for (var r = 0; r < 2; r++) {
-      var wy0 = r === 0 ? 34 : 148, wh = r === 0 ? 72 : 66;
-      for (var i = 0; i < 9; i++) {
-        var wx = 18 + i * 54, ww = 34;
-        g.fillStyle = "#8a6f42"; g.fillRect(wx - 3, wy0 - 8, ww + 6, wh + 10);
-        g.fillStyle = "#5d4a2c"; g.beginPath();
-        g.moveTo(wx, wy0 + wh); g.lineTo(wx, wy0 + 12); g.arc(wx + ww / 2, wy0 + 12, ww / 2, Math.PI, 0); g.lineTo(wx + ww, wy0 + wh); g.closePath(); g.fill();
-        var lit2 = Math.random();
-        var wg = g.createLinearGradient(wx, wy0, wx, wy0 + wh);
-        if (lit2 < 0.45) { wg.addColorStop(0, "#ffdf9e"); wg.addColorStop(1, "#c98d3a"); }
-        else { wg.addColorStop(0, "#9fb8cc"); wg.addColorStop(1, "#3c5468"); }
-        g.fillStyle = wg; g.beginPath();
-        g.moveTo(wx + 3, wy0 + wh - 2); g.lineTo(wx + 3, wy0 + 13); g.arc(wx + ww / 2, wy0 + 13, ww / 2 - 3, Math.PI, 0); g.lineTo(wx + ww - 3, wy0 + wh - 2); g.closePath(); g.fill();
-        g.fillStyle = "rgba(40,30,15,0.6)"; g.fillRect(wx + ww / 2 - 1, wy0 + 8, 2, wh - 8);
+    // ashlar stone wall — every block shaded like real cut stone
+    g.fillStyle = "#d6c096"; g.fillRect(0, 0, 1024, 512);
+    var bh3 = 42, bw3 = 128;
+    for (var yy = 0, rr = 0; yy < 512; yy += bh3, rr++) {
+      for (var xx = -bw3 + (rr % 2) * (bw3 / 2); xx < 1024; xx += bw3) {
+        var sh2 = (Math.random() - 0.5) * 18;
+        g.fillStyle = "rgb(" + (216 + sh2 | 0) + "," + (193 + sh2 | 0) + "," + (152 + sh2 * 0.8 | 0) + ")";
+        g.fillRect(xx + 1, yy + 1, bw3 - 2, bh3 - 2);
+        g.fillStyle = "rgba(255,248,225,0.20)"; g.fillRect(xx + 1, yy + 1, bw3 - 2, 3);
+        g.fillStyle = "rgba(105,80,45,0.20)"; g.fillRect(xx + 1, yy + bh3 - 4, bw3 - 2, 3);
       }
     }
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    noiseOn(g, 1024, 512, 5200, 0.06);
+    // weather streaks washing down from the cornices
+    for (var st = 0; st < 30; st++) {
+      var sx0 = Math.random() * 1024;
+      var sgr = g.createLinearGradient(0, 30, 0, 150);
+      sgr.addColorStop(0, "rgba(96,78,48,0.13)"); sgr.addColorStop(1, "rgba(96,78,48,0)");
+      g.fillStyle = sgr; g.fillRect(sx0, 30, 3 + Math.random() * 4, 120);
+    }
+    // cornice bands with carved dentil teeth (top, middle) + dark plinth
+    function cornice(y, hgt) {
+      g.fillStyle = "#b99f6e"; g.fillRect(0, y, 1024, hgt);
+      g.fillStyle = "rgba(255,246,220,0.55)"; g.fillRect(0, y, 1024, 3);
+      g.fillStyle = "rgba(70,52,25,0.45)"; g.fillRect(0, y + hgt - 3, 1024, 3);
+      g.fillStyle = "rgba(80,60,30,0.5)";
+      for (var dx = 6; dx < 1024; dx += 26) g.fillRect(dx, y + hgt * 0.34, 11, hgt * 0.36);
+    }
+    cornice(0, 30); cornice(246, 24);
+    g.fillStyle = "#a8895a"; g.fillRect(0, 486, 1024, 26);
+    g.fillStyle = "rgba(60,44,20,0.4)"; g.fillRect(0, 486, 1024, 3);
+    // two rows of tall arched windows: stone surrounds, keystones, fanlights
+    for (var r = 0; r < 2; r++) {
+      var wy0 = r === 0 ? 62 : 292, wh = r === 0 ? 148 : 152;
+      for (var i = 0; i < 9; i++) {
+        var wx = 30 + i * 110, ww = 62;
+        g.fillStyle = "#e9dab2"; g.beginPath();
+        g.moveTo(wx - 7, wy0 + wh + 4); g.lineTo(wx - 7, wy0 + 10);
+        g.arc(wx + ww / 2, wy0 + 10, ww / 2 + 7, Math.PI, 0);
+        g.lineTo(wx + ww + 7, wy0 + wh + 4); g.closePath(); g.fill();
+        g.fillStyle = "#8a6f42"; g.fillRect(wx + ww / 2 - 6, wy0 - 16, 12, 18); // keystone
+        g.save(); g.beginPath();
+        g.moveTo(wx, wy0 + wh); g.lineTo(wx, wy0 + 10);
+        g.arc(wx + ww / 2, wy0 + 10, ww / 2, Math.PI, 0);
+        g.lineTo(wx + ww, wy0 + wh); g.closePath(); g.clip();
+        paintGlass(g, wx - 2, wy0 - ww / 2, ww + 4, wh + ww / 2);
+        g.strokeStyle = "rgba(30,24,14,0.65)"; g.lineWidth = 3;
+        for (var sp2 = 0; sp2 <= 4; sp2++) {
+          var ang = Math.PI + sp2 * Math.PI / 4;
+          g.beginPath(); g.moveTo(wx + ww / 2, wy0 + 10);
+          g.lineTo(wx + ww / 2 + Math.cos(ang) * ww / 2, wy0 + 10 + Math.sin(ang) * ww / 2); g.stroke();
+        }
+        g.fillStyle = "rgba(24,20,12,0.8)"; g.fillRect(wx + ww / 2 - 2, wy0 + 8, 4, wh - 8);
+        g.fillRect(wx, wy0 + wh * 0.55, ww, 3);
+        g.restore();
+        g.fillStyle = "#e9dab2"; g.fillRect(wx - 8, wy0 + wh + 4, ww + 16, 5);
+        g.fillStyle = "rgba(96,78,48,0.16)"; g.fillRect(wx + ww * 0.25, wy0 + wh + 9, ww * 0.5, 12);
+      }
+    }
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
     facadeCache.heritage = t; return t;
   }
 
@@ -784,7 +1251,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   function buildHeritageBlock(cx, cz) {
     var group = new THREE.Group();
     var hTex = heritageFacadeTexture();
-    var hMat = new THREE.MeshStandardMaterial({ map: hTex, roughness: 0.85, metalness: 0.02, emissive: 0xffb45e, emissiveMap: hTex, emissiveIntensity: 0.14 });
+    var hMat = new THREE.MeshStandardMaterial({ map: hTex, bumpMap: hTex, bumpScale: 0.8, roughness: 0.85, metalness: 0.02, emissive: 0xffb45e, emissiveMap: hTex, emissiveIntensity: 0.14 });
     windowMats.push(hMat);
     var main = new THREE.Mesh(new THREE.BoxGeometry(29, 12.5, 17), hMat);
     main.position.set(0, 6.47, 0); main.castShadow = true; main.receiveShadow = true; group.add(main);
@@ -836,13 +1303,100 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // low 4-5 storey blocks, white render + light grey + charcoal, warm wood
   // cladding, floor-to-ceiling windows, glass balconies, deep flat roofs.
   var facadeCache = {};
+  // One window pane painted like a real one: a warm lived-in interior
+  // (curtains, a lamp, furniture, a plant, someone home), half-drawn
+  // venetian blinds, or dusk glass reflecting sky, clouds, sun glare
+  // and the rooftops opposite. Used by every facade in the city.
+  function paintGlass(g, x, y, w, h) {
+    var r = Math.random();
+    if (r < 0.40) {
+      // ---- warm lit interior ----
+      var wg = g.createLinearGradient(x, y, x, y + h);
+      wg.addColorStop(0, "#ffedb6"); wg.addColorStop(0.55, "#f4bd63"); wg.addColorStop(1, "#bd7f31");
+      g.fillStyle = wg; g.fillRect(x, y, w, h);
+      var glow = g.createRadialGradient(x + w / 2, y + h * 0.16, 2, x + w / 2, y + h * 0.16, w * 0.55);
+      glow.addColorStop(0, "rgba(255,252,230,0.85)"); glow.addColorStop(1, "rgba(255,252,230,0)");
+      g.fillStyle = glow; g.fillRect(x, y, w, h * 0.7);
+      // curtains — drapes at both sides, one side, or a sheer voile
+      var cur = Math.random();
+      if (cur < 0.65) {
+        g.fillStyle = "rgba(122,58,32,0.55)";
+        g.fillRect(x, y, w * 0.17, h); g.fillRect(x + w * 0.83, y, w * 0.17, h);
+        g.fillStyle = "rgba(70,30,12,0.35)";
+        for (var cf = 0; cf < 3; cf++) { g.fillRect(x + 3 + cf * w * 0.055, y, 1.5, h); g.fillRect(x + w * 0.85 + cf * w * 0.055, y, 1.5, h); }
+      } else if (cur < 0.85) {
+        g.fillStyle = "rgba(255,246,225,0.38)"; g.fillRect(x, y, w, h);
+        g.fillStyle = "rgba(160,130,90,0.25)";
+        for (var cf2 = 4; cf2 < w; cf2 += 7) g.fillRect(x + cf2, y, 1.5, h);
+      }
+      // lived-in silhouettes along the bottom of the pane
+      var sil = Math.random();
+      if (sil < 0.4) {
+        g.fillStyle = "rgba(84,44,14,0.5)";
+        g.fillRect(x + w * 0.12, y + h * 0.68, w * 0.5, h * 0.32);
+        g.fillRect(x + w * 0.12, y + h * 0.58, w * 0.14, h * 0.14); // sofa + cushion back
+      } else if (sil < 0.62) {
+        g.fillStyle = "rgba(84,44,14,0.5)";
+        g.fillRect(x + w * 0.62, y + h * 0.62, w * 0.05, h * 0.38); // lamp stand
+        g.beginPath(); g.moveTo(x + w * 0.545, y + h * 0.62); g.lineTo(x + w * 0.72, y + h * 0.62); g.lineTo(x + w * 0.685, y + h * 0.44); g.lineTo(x + w * 0.58, y + h * 0.44); g.closePath(); g.fill();
+      } else if (sil < 0.8) {
+        g.fillStyle = "rgba(84,44,14,0.5)"; g.fillRect(x + w * 0.4, y + h * 0.82, w * 0.2, h * 0.18); // plant pot
+        g.fillStyle = "rgba(52,74,30,0.6)";
+        for (var lf = 0; lf < 5; lf++) { g.beginPath(); g.arc(x + w * (0.38 + Math.random() * 0.24), y + h * (0.6 + Math.random() * 0.2), w * 0.055, 0, 7); g.fill(); }
+      } else if (sil < 0.9) {
+        g.fillStyle = "rgba(70,36,12,0.55)"; // someone standing at the window
+        g.beginPath(); g.arc(x + w * 0.5, y + h * 0.52, w * 0.085, 0, 7); g.fill();
+        g.beginPath(); g.moveTo(x + w * 0.34, y + h); g.quadraticCurveTo(x + w * 0.5, y + h * 0.62, x + w * 0.66, y + h); g.closePath(); g.fill();
+      }
+      g.fillStyle = "rgba(255,255,255,0.30)"; g.fillRect(x, y, w, 3);
+    } else if (r < 0.53) {
+      // ---- venetian blinds, half drawn, warm room glow below ----
+      var bg2 = g.createLinearGradient(x, y, x, y + h);
+      bg2.addColorStop(0, "#e7dfca"); bg2.addColorStop(1, "#b3a78d");
+      g.fillStyle = bg2; g.fillRect(x, y, w, h);
+      var blindH = h * (0.45 + Math.random() * 0.4);
+      for (var bl = y + 3; bl < y + blindH; bl += 5) {
+        g.fillStyle = "rgba(90,78,55,0.35)"; g.fillRect(x, bl + 2, w, 1.6);
+        g.fillStyle = "rgba(255,255,255,0.4)"; g.fillRect(x, bl, w, 1.2);
+      }
+      g.fillStyle = "rgba(120,90,40,0.25)"; g.fillRect(x, y + blindH, w, h - blindH);
+    } else {
+      // ---- reflective dusk glass ----
+      var rg = g.createLinearGradient(x, y, x + w * 0.4, y + h);
+      rg.addColorStop(0, "#d3e5f4"); rg.addColorStop(0.34, "#7ea6c8"); rg.addColorStop(0.66, "#33516e"); rg.addColorStop(1, "#21384e");
+      g.fillStyle = rg; g.fillRect(x, y, w, h);
+      g.fillStyle = "rgba(255,255,255,0.16)"; // cloud streaks
+      for (var cl = 0; cl < 3; cl++) {
+        g.save(); g.translate(x + w * (0.2 + Math.random() * 0.55), y + h * (0.12 + Math.random() * 0.3));
+        g.rotate(-0.24); g.scale(1, 0.26);
+        g.beginPath(); g.arc(0, 0, w * (0.2 + Math.random() * 0.16), 0, 7); g.fill(); g.restore();
+      }
+      var sg2 = g.createRadialGradient(x + w * 0.24, y + h * 0.18, 1, x + w * 0.24, y + h * 0.18, w * 0.5);
+      sg2.addColorStop(0, "rgba(255,246,215,0.55)"); sg2.addColorStop(1, "rgba(255,246,215,0)");
+      g.fillStyle = sg2; g.fillRect(x, y, w, h * 0.75); // sun glare
+      g.fillStyle = "rgba(16,28,40,0.30)"; // rooftops opposite, reflected low in the pane
+      var rx = x;
+      while (rx < x + w - 6) {
+        var rw = 8 + Math.random() * 16, rh = h * (0.12 + Math.random() * 0.2);
+        g.fillRect(rx, y + h - rh, rw, rh); rx += rw + 2;
+      }
+      g.fillStyle = "rgba(255,214,140,0.5)";
+      for (var dt = 0; dt < 5; dt++) g.fillRect(x + Math.random() * w * 0.9, y + h * (0.72 + Math.random() * 0.22), 1.6, 1.6);
+      g.fillStyle = "rgba(255,255,255,0.10)"; // diagonal sheen band
+      g.beginPath(); g.moveTo(x + w * 0.55, y); g.lineTo(x + w * 0.85, y); g.lineTo(x + w * 0.4, y + h); g.lineTo(x + w * 0.1, y + h); g.closePath(); g.fill();
+    }
+    // inner frame shadow so the pane sits IN the wall, not on it
+    g.strokeStyle = "rgba(0,0,0,0.30)"; g.lineWidth = 3; g.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    g.fillStyle = "rgba(255,255,255,0.20)"; g.fillRect(x, y, w, 2);
+  }
+
   function facadeTexture(style, floors) {
     floors = floors || 4;
     var cacheKey = style + '_' + floors;
     if (facadeCache[cacheKey]) return facadeCache[cacheKey];
-    var c = document.createElement("canvas"); c.width = 384; c.height = 384;
+    var c = document.createElement("canvas"); c.width = 768; c.height = 768;
     var g = c.getContext("2d");
-    var W = 384, H = 384, fh = H / floors;
+    var W = 768, H = 768, fh = H / floors;
     // base palettes like the photo
     var palettes = [
       { base:"#e9e6df", band:"#c9ccd0", dark:"#3a4046" },
@@ -852,73 +1406,88 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     ];
     var pal = palettes[style % palettes.length];
     g.fillStyle = pal.base; g.fillRect(0,0,W,H);
-    noiseOn(g, W, H, 350, 0.05);
-    // subtle vertical panel joints like modern render panels
-    g.fillStyle = "rgba(0,0,0,0.07)";
-    for (var jx=0;jx<=W;jx+=64) g.fillRect(jx,0,1,H);
-    // wood-clad bay on left or right (photo has strong wood sections)
-    var woodX = (style%2===0)? 0 : W-88;
-    g.fillStyle = "#8f6b48"; g.fillRect(woodX,0,88,H);
-    g.fillStyle = "#7c5a3a"; for(var wx2=woodX; wx2<woodX+88; wx2+=8) g.fillRect(wx2,0,2,H);
-    g.fillStyle = "rgba(255,220,170,0.14)"; for(var wx3=woodX+4; wx3<woodX+88; wx3+=16) g.fillRect(wx3,0,3,H);
-    g.fillStyle = "rgba(0,0,0,0.16)"; for(var wy2=0; wy2<H; wy2+=6) g.fillRect(woodX,wy2,88,1);
-    // dark charcoal bay (stair / lift core in photo)
-    var darkX = (style%2===0)? W-69 : 88;
-    g.fillStyle = pal.dark; g.fillRect(darkX,0,69,H);
-    g.fillStyle = "rgba(255,255,255,0.08)"; g.fillRect(darkX,0,2,H); g.fillRect(darkX+67,0,2,H);
-    // floors: slab band + huge windows / sliding doors
-    for (var f=0; f<floors; f++) {
-      var y0 = f*fh;
-      // floor slab shadow line - crisp horizontal like photo
-      g.fillStyle = "rgba(0,0,0,0.20)"; g.fillRect(0, y0+fh-4, W, 4);
-      g.fillStyle = "rgba(255,255,255,0.55)"; g.fillRect(0, y0+fh-2, W, 1);
-      // windows per floor: 4 large bays avoiding wood/dark bays are still glazed there too in photo
-      for (var bIdx=0; bIdx<4; bIdx++) {
-        var bx = 14 + bIdx*93, bw = 72, bh = fh-22, by = y0+10;
-        // if inside wood/dark zone, make window slightly narrower but keep glass
-        g.fillStyle = "#1d2329"; g.fillRect(bx-3, by-3, bw+6, bh+6); // dark frame
-        var lit = Math.random();
-        if (lit < 0.42) {
-          // warm lit interior at dusk - like every lit flat in photo
-          var wg2 = g.createLinearGradient(bx,by,bx,by+bh);
-          wg2.addColorStop(0,"#ffe9b0"); wg2.addColorStop(0.55,"#f7c66d"); wg2.addColorStop(1,"#c98d3a");
-          g.fillStyle = wg2; g.fillRect(bx,by,bw,bh);
-          g.fillStyle = "rgba(90,50,10,0.28)"; g.fillRect(bx+bw*0.18, by+bh*0.25, bw*0.22, bh*0.75); // interior silhouette / furniture
-          g.fillStyle = "rgba(255,255,255,0.35)"; g.fillRect(bx,by,bw,5);
-        } else if (lit < 0.58) {
-          g.fillStyle = "#e8e2d2"; g.fillRect(bx,by,bw,bh); // blind / curtain half closed
-          g.fillStyle = "rgba(0,0,0,0.14)"; for(var bl=by+6; bl<by+bh; bl+=7) g.fillRect(bx,bl,bw,1);
-          var wg3 = g.createLinearGradient(bx,by,bx,by+bh);
-          wg3.addColorStop(0,"rgba(160,190,220,0.35)"); wg3.addColorStop(1,"rgba(60,80,100,0.25)");
-          g.fillStyle = wg3; g.fillRect(bx,by+bw*0, bw, bh*0.4);
-        } else {
-          // deep blue reflective glass at dusk, sky + opposite buildings
-          var wg = g.createLinearGradient(bx,by,bx+bw,by+bh);
-          wg.addColorStop(0,"#a9c6de"); wg.addColorStop(0.38,"#4a6a86"); wg.addColorStop(0.62,"#22384c"); wg.addColorStop(1,"#2e4a61");
-          g.fillStyle = wg; g.fillRect(bx,by,bw,bh);
-          g.fillStyle = "rgba(255,255,255,0.28)"; g.fillRect(bx+8,by+4,18,bh-10);
-          g.fillStyle = "rgba(255,255,255,0.10)"; g.fillRect(bx+34,by,10,bh);
-        }
-        // centre mullion + sliding door split
-        g.fillStyle = "#14191e"; g.fillRect(bx+bw/2-1, by, 2, bh);
-        g.fillStyle = "rgba(255,255,255,0.18)"; g.fillRect(bx,by,bw,2);
+    noiseOn(g, W, H, 2600, 0.05);
+    // per-panel tone shifts + joints, like real render/board cladding
+    for (var px = 0; px < W; px += 128) {
+      for (var py = 0; py < H; py += 128) {
+        g.fillStyle = Math.random() < 0.5 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.035)";
+        g.fillRect(px, py, 128, 128);
       }
     }
+    g.fillStyle = "rgba(0,0,0,0.09)";
+    for (var jx=0;jx<=W;jx+=128) g.fillRect(jx,0,1.5,H);
+    // faint rain streaks running down from the roof line
+    for (var rs=0; rs<22; rs++) {
+      var rxp = Math.random()*W, rwp = 2+Math.random()*5;
+      var rsg = g.createLinearGradient(0,0,0,H);
+      rsg.addColorStop(0,"rgba(80,84,88,0.08)"); rsg.addColorStop(1,"rgba(80,84,88,0)");
+      g.fillStyle = rsg; g.fillRect(rxp, 0, rwp, H*(0.3+Math.random()*0.6));
+    }
+    // wood-clad bay: individual planks with grain lines and knots
+    var woodX = (style%2===0)? 0 : W-176;
+    g.fillStyle = "#8a6242"; g.fillRect(woodX,0,176,H);
+    for (var wp=woodX; wp<woodX+176; wp+=16) {
+      var wsh = (Math.random()-0.5)*22;
+      g.fillStyle = "rgb("+(146+wsh|0)+","+(104+wsh*0.75|0)+","+(66+wsh*0.5|0)+")";
+      g.fillRect(wp+1,0,14,H);
+      g.fillStyle = "rgba(60,35,15,0.35)"; g.fillRect(wp,0,1.6,H);
+      g.strokeStyle = "rgba(80,50,22,0.20)"; g.lineWidth = 1;
+      for (var gl2=0; gl2<3; gl2++) {
+        g.beginPath(); var gx9 = wp+3+Math.random()*10;
+        g.moveTo(gx9, 0); g.bezierCurveTo(gx9+2, H*0.33, gx9-2, H*0.66, gx9+1, H); g.stroke();
+      }
+      if (Math.random()<0.5) { g.fillStyle="rgba(70,42,18,0.5)"; g.beginPath(); g.arc(wp+5+Math.random()*7, Math.random()*H, 2.2, 0, 7); g.fill(); }
+    }
+    g.fillStyle = "rgba(0,0,0,0.20)"; for(var wy2=0; wy2<H; wy2+=48) g.fillRect(woodX,wy2,176,1.6);
+    // dark charcoal bay: vertical louvre slats over the stair/lift core
+    var darkX = (style%2===0)? W-138 : 176;
+    g.fillStyle = pal.dark; g.fillRect(darkX,0,138,H);
+    for (var lv=darkX+4; lv<darkX+134; lv+=11) {
+      g.fillStyle = "rgba(0,0,0,0.4)"; g.fillRect(lv,0,3,H);
+      g.fillStyle = "rgba(255,255,255,0.10)"; g.fillRect(lv+3,0,1.4,H);
+    }
+    // floors: slab shadow line + big real windows
+    for (var f=0; f<floors; f++) {
+      var y0 = f*fh;
+      g.fillStyle = "rgba(0,0,0,0.20)"; g.fillRect(0, y0+fh-5, W, 5);
+      g.fillStyle = "rgba(255,255,255,0.5)"; g.fillRect(0, y0+fh-3, W, 1.4);
+      for (var bIdx=0; bIdx<4; bIdx++) {
+        var bx = 28 + bIdx*182, bw = 140, bh = fh-44, by = y0+20;
+        g.fillStyle = "#14181d"; g.fillRect(bx-5, by-5, bw+10, bh+10); // deep outer frame
+        g.fillStyle = "#2e353d"; g.fillRect(bx-2.5, by-2.5, bw+5, bh+5);
+        paintGlass(g, bx, by, bw, bh);
+        g.fillStyle = "#12161a";
+        g.fillRect(bx+bw/2-1.5, by, 3, bh);      // centre mullion
+        g.fillRect(bx, by+bh*0.36, bw, 2.5);    // transom bar
+        // pale stone sill, its shadow, and the weather drip below it
+        g.fillStyle = "#ddd9cf"; g.fillRect(bx-5, by+bh+5, bw+10, 4.5);
+        g.fillStyle = "rgba(0,0,0,0.22)"; g.fillRect(bx-5, by+bh+9.5, bw+10, 3);
+        var dg = g.createLinearGradient(0, by+bh+12, 0, by+bh+30);
+        dg.addColorStop(0,"rgba(80,84,86,0.13)"); dg.addColorStop(1,"rgba(80,84,86,0)");
+        g.fillStyle = dg; g.fillRect(bx+bw*0.28, by+bh+12, bw*0.44, 18);
+      }
+    }
+    // grime creeping up from the ground line
+    var gg = g.createLinearGradient(0, H-26, 0, H);
+    gg.addColorStop(0,"rgba(70,72,66,0)"); gg.addColorStop(1,"rgba(70,72,66,0.20)");
+    g.fillStyle = gg; g.fillRect(0, H-26, W, 26);
     var t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
     t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
     facadeCache[cacheKey] = t;
     return t;
   }
   function glassTexture() {
-    var c = document.createElement("canvas"); c.width=256; c.height=128;
+    var c = document.createElement("canvas"); c.width=512; c.height=256;
     var g=c.getContext("2d");
-    var gr=g.createLinearGradient(0,0,256,128); gr.addColorStop(0,"#b8d2e8"); gr.addColorStop(0.5,"#3d5a72"); gr.addColorStop(1,"#1e3446");
-    g.fillStyle=gr; g.fillRect(0,0,256,128);
-    g.fillStyle="rgba(255,255,255,0.28)"; g.fillRect(18,0,26,128); g.fillRect(90,0,10,128);
-    g.fillStyle="#171c21"; for(var x=0;x<=256;x+=64) g.fillRect(x,0,3,128);
-    g.fillRect(0,62,256,3);
-    var t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+    g.fillStyle="#141a20"; g.fillRect(0,0,512,256);
+    for (var gy=0; gy<2; gy++) for (var gx=0; gx<4; gx++) {
+      paintGlass(g, gx*128+5, gy*128+5, 118, 118);
+    }
+    g.fillStyle="#141a20";
+    for(var mx=0;mx<=512;mx+=128) g.fillRect(mx-3,0,6,256);
+    g.fillRect(0,125,512,6);
+    var t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t;
   }
   var sharedGlassTex = null;
   // Ground floor lobby like photo: recessed warm glass entrance, dark frames, no shop signs
@@ -926,23 +1495,38 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   function frontageTexture(name, bg, isHotel) {
     var fKey = (isHotel ? name : 'RES');
     if (frontageCache[fKey]) return frontageCache[fKey];
-    var c = document.createElement("canvas"); c.width = 512; c.height = 128;
+    var c = document.createElement("canvas"); c.width = 1024; c.height = 256;
     var g = c.getContext("2d");
-    g.fillStyle = "#2e3338"; g.fillRect(0,0,512,128); // charcoal plinth / frame
-    g.fillStyle = "#e9e6df"; g.fillRect(0,0,512,10);
-    // warm lobby glass across most of frontage
-    for (var sx=14; sx<498; sx+=68) {
-      var sg=g.createLinearGradient(0,18,0,118); sg.addColorStop(0,"#ffdf9e"); sg.addColorStop(0.45,"#e8a84f"); sg.addColorStop(1,"#7a4d1e");
-      g.fillStyle=sg; g.fillRect(sx,18,60,100);
-      g.fillStyle="rgba(255,255,255,0.32)"; g.fillRect(sx+6,18,10,100);
-      g.fillStyle="#1a1e22"; g.fillRect(sx+59,18,3,100);
+    g.fillStyle = "#26292d"; g.fillRect(0,0,1024,256); // charcoal stone plinth
+    noiseOn(g, 1024, 256, 1500, 0.06);
+    g.fillStyle = "#e9e6df"; g.fillRect(0,0,1024,20);
+    g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(0,20,1024,3);
+    // floor-to-ceiling lobby glass with a lived-in interior behind it
+    for (var sx=20; sx<1000; sx+=92) {
+      var sg=g.createLinearGradient(0,36,0,236); sg.addColorStop(0,"#ffdf9e"); sg.addColorStop(0.45,"#e2a24b"); sg.addColorStop(1,"#8a5a24");
+      g.fillStyle=sg; g.fillRect(sx,36,84,200);
+      g.fillStyle="rgba(60,35,10,0.6)"; g.fillRect(sx+40,36,2,34); // pendant light cord
+      var pg=g.createRadialGradient(sx+41,76,1,sx+41,76,17);
+      pg.addColorStop(0,"rgba(255,250,220,0.95)"); pg.addColorStop(1,"rgba(255,250,220,0)");
+      g.fillStyle=pg; g.fillRect(sx+22,57,38,38);
+      var pick = Math.random();
+      g.fillStyle="rgba(88,48,16,0.5)";
+      if (pick<0.35) g.fillRect(sx+8,186,58,50); // sofa silhouette
+      else if (pick<0.6) { g.fillRect(sx+30,196,24,40); g.fillStyle="rgba(46,66,26,0.55)"; g.beginPath(); g.arc(sx+42,182,17,0,7); g.fill(); } // lobby plant
+      else if (isHotel) g.fillRect(sx+4,182,76,54); // reception desk
+      g.fillStyle="rgba(255,255,255,0.30)"; g.fillRect(sx+8,36,13,200); // glass sheen
+      g.fillStyle="#15181b"; g.fillRect(sx+83,36,3,200);
+      g.fillStyle="rgba(0,0,0,0.35)"; g.fillRect(sx,232,84,4);
     }
-    // central double doors darker
-    g.fillStyle="#14181c"; g.fillRect(226,18,60,108);
-    g.fillStyle="#ffd98a"; g.fillRect(252,68,4,18); g.fillRect(268,68,4,18);
-    g.font="600 11px Arial"; g.textAlign="center"; g.fillStyle="rgba(255,255,255,0.9)";
-    g.fillText(isHotel? name : "RESIDENCE  •  ENTRANCE", 256, 9);
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    // central double doors: dark reflective glass, brass handles
+    g.fillStyle="#10141a"; g.fillRect(452,36,120,208);
+    var dg2=g.createLinearGradient(0,36,0,244); dg2.addColorStop(0,"rgba(160,195,225,0.35)"); dg2.addColorStop(1,"rgba(30,45,60,0.15)");
+    g.fillStyle=dg2; g.fillRect(456,40,112,200);
+    g.fillStyle="#0a0d10"; g.fillRect(509,36,4,208);
+    g.fillStyle="#e8b95c"; g.fillRect(498,128,7,26); g.fillRect(519,128,7,26);
+    g.font="600 15px Arial"; g.textAlign="center"; g.fillStyle="rgba(30,32,36,0.92)";
+    g.fillText(isHotel? name : "RESIDENCE  •  ENTRANCE", 512, 15);
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
     frontageCache[fKey] = t;
     return t;
   }
@@ -955,6 +1539,10 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var woodMat = mat(0x8a6544, 0.82, 0);
   var woodDarkMat = mat(0x6f4e32, 0.85, 0);
   var glassRailMat = new THREE.MeshStandardMaterial({ color: 0xbfe0ea, roughness: 0.08, metalness: 0.15, transparent: true, opacity: 0.48 });
+  var slabEdgeMat = mat(0xdcd9d0, 0.85, 0.02);
+  var acUnitMat = mat(0xc9ccd0, 0.55, 0.35);
+  var acFanMat = mat(0x3a4046, 0.7, 0.3);
+  var solarMat = new THREE.MeshStandardMaterial({ color: 0x1d3350, roughness: 0.22, metalness: 0.65, emissive: 0x0d1c30, emissiveIntensity: 0.4 });
   var shrubMat = mat(0x3d6b2f, 0.95, 0);
   var lawnMatShared = null;
   function getLawnMat(){ if(!lawnMatShared){ var lt=groundTexture("#5f7f3a","rgba(70,95,45,0.7)",false); lt.repeat.set(3,3); lawnMatShared=new THREE.MeshStandardMaterial({map:lt, roughness:1}); } return lawnMatShared; }
@@ -977,16 +1565,22 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var style = Math.floor(Math.random()*4);
     var tex = archB === "tower" ? towerFacadeTexture(floors) : facadeTexture(style, floors);
     if(!sharedGlassTex) sharedGlassTex = glassTexture();
-    var bm = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.82, metalness: 0.04, emissive: 0xffb45e, emissiveMap: tex, emissiveIntensity: 0.18 });
+    var bm = new THREE.MeshStandardMaterial({ map: tex, bumpMap: tex, bumpScale: 0.6, roughness: 0.82, metalness: 0.04, emissive: 0xffb45e, emissiveMap: tex, emissiveIntensity: 0.18 });
     windowMats.push(bm);
     var b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bm);
     b.position.set(ox, h/2 + 0.22, oz); b.castShadow=true; b.receiveShadow=true; group.add(b);
+    // protruding floor-slab edges — the stacked-slab rhythm of real blocks
+    if (archB !== "tower") {
+      for (var sf = 1; sf < floors; sf++) {
+        group.add(box(w + 0.26, 0.17, d + 0.26, slabEdgeMat, ox, 0.22 + sf * floorH - 0.02, oz, false));
+      }
+    }
 
     // --- Staggered protruding volume (photo: blocks step in/out, angled bays) ---
     var volW = w*0.38, volD = 1.35;
     var volX = (style%2===0? -w*0.28 : w*0.28);
     var volTex = facadeTexture((style+1)%4, floors);
-    var volMat = new THREE.MeshStandardMaterial({ map: volTex, roughness:0.82, metalness:0.04, emissive:0xffb45e, emissiveMap:volTex, emissiveIntensity:0.15 });
+    var volMat = new THREE.MeshStandardMaterial({ map: volTex, bumpMap: volTex, bumpScale: 0.6, roughness:0.82, metalness:0.04, emissive:0xffb45e, emissiveMap:volTex, emissiveIntensity:0.15 });
     windowMats.push(volMat);
     var vol = new THREE.Mesh(new THREE.BoxGeometry(volW, h*0.82, d*0.72), volMat);
     vol.position.set(volX, h*0.41+0.22, oz + d/2 - d*0.36 + 0.45); vol.castShadow=true; vol.receiveShadow=true; group.add(vol);
@@ -1005,6 +1599,18 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     group.add(box(w*0.76+1.2, 0.36, d*0.78+1.2, roofMat, ox - w*0.06, h+3.28, oz - d*0.05, false));
     // rooftop details small, set back (not the old chunky tanks dominating)
     group.add(box(2.2,0.7,1.6, mat(0x9aa0a5,0.6,0.3), ox+w*0.28, h+1.0, oz-d*0.28, false));
+    // rooftop life: solar panels on the penthouse roof, water tank, condensers
+    if (style % 2 === 0) {
+      for (var sp3 = 0; sp3 < 3; sp3++) {
+        var panel = box(2.7, 0.09, 1.7, solarMat, ox - w*0.06 - 3.1 + sp3 * 3.1, h + 3.95, oz - d*0.05, false);
+        panel.rotation.x = -0.38; group.add(panel);
+        group.add(box(0.12, 0.5, 1.5, darkMetalMat, ox - w*0.06 - 3.1 + sp3 * 3.1 - 1.05, h + 3.68, oz - d*0.05, false));
+      }
+    }
+    var tank = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 1.7, 12), acUnitMat);
+    tank.position.set(ox + w*0.4, h + 1.48, oz - d*0.34); tank.castShadow = true; group.add(tank);
+    group.add(box(1.5, 0.8, 0.9, acUnitMat, ox + w*0.4, h + 1.03, oz - d*0.02, false));
+    group.add(box(1.1, 0.6, 0.8, acUnitMat, ox + w*0.38, h + 0.93, oz + d*0.16, false));
 
     // --- Glass balconies: continuous on front (south) face, like photo ---
     for (var bf=1; bf<floors; bf++) {
@@ -1018,6 +1624,31 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     // top-floor terrace glass parapet around roof edge front
     var topRail = new THREE.Mesh(new THREE.BoxGeometry(w+1.2, 0.85, 0.06), glassRailMat);
     topRail.position.set(ox, h+0.95, oz + d/2 + 0.85); group.add(topRail);
+
+    // --- Real-world dressing: corner downpipe, wall AC units, planters ---
+    group.add(box(0.17, h, 0.17, darkMetalMat, ox + w/2 - 0.75, h/2 + 0.22, oz + d/2 + 0.14, false));
+    var acSide = (style % 2 === 0) ? 1 : -1;
+    for (var ac = 0; ac < 3; ac++) {
+      var acY = 0.22 + (2 + ac * 1.35) * floorH - 0.6;
+      if (acY > h - 0.8) break;
+      var acZ = oz - d * 0.22 + ac * d * 0.2;
+      group.add(box(0.52, 0.62, 0.98, acUnitMat, ox + acSide * (w/2 + 0.3), acY, acZ, false));
+      group.add(box(0.07, 0.42, 0.72, acFanMat, ox + acSide * (w/2 + 0.58), acY, acZ, false));
+    }
+    // planters with shrubs flanking the entrance
+    [-3.3, 3.3].forEach(function (px2) {
+      group.add(box(1.15, 0.52, 0.55, woodDarkMat, ox + px2, 0.5, oz + d/2 + 1.25, false));
+      var psh = new THREE.Mesh(new THREE.SphereGeometry(0.52, 8, 7), shrubMat);
+      psh.scale.y = 0.75; psh.position.set(ox + px2, 0.95, oz + d/2 + 1.25); group.add(psh);
+    });
+    // life on two balconies: planter boxes with shrubs up at the rail
+    [2, floors - 1].forEach(function (bf2) {
+      if (bf2 < 1 || bf2 >= floors) return;
+      var by2 = 0.22 + bf2 * floorH;
+      group.add(box(1.3, 0.3, 0.42, woodDarkMat, ox - w*0.05 - balcW/2 + 0.85, by2 + 0.12, oz + d/2 + 1.28, false));
+      var bsh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 7), shrubMat);
+      bsh.scale.y = 0.7; bsh.position.set(ox - w*0.05 - balcW/2 + 0.85, by2 + 0.42, oz + d/2 + 1.28); group.add(bsh);
+    });
 
     // --- Ground floor: dark plinth + warm lobby entrance + canopy (photo) ---
     group.add(box(w+0.3, 0.55, d+0.3, darkMetalMat, ox, 0.48, oz, false));
@@ -1062,6 +1693,146 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       buildBlock(bx * BLOCK, bz * BLOCK, bz === 1);
     }
   }
+
+  // ================================================================
+  // YOUR HOME — a separate house on its own plot east of the city
+  // grid, built like the rendered house in the user's photo: white
+  // two-storey modern house, flat roofs, a cantilevered upper box
+  // with floor-to-ceiling warm-lit glass, a dark grey central tower
+  // block, huge clear glass sliding doors on the ground floor, a
+  // glass balcony rail, red outdoor sofas on the terrace and a
+  // glossy light-grey tiled forecourt / driveway in front.
+  // ================================================================
+  var HOME_X = 170, HOME_Z = -24;
+  var HOME_DOOR = { x: HOME_X + 6.2, z: HOME_Z + 7.6 };
+  function homeGlassTexture(warm) {
+    var c = document.createElement("canvas"); c.width = 512; c.height = 256;
+    var g = c.getContext("2d");
+    if (warm) {
+      var gr = g.createLinearGradient(0, 0, 0, 256);
+      gr.addColorStop(0, "#f9d98c"); gr.addColorStop(0.55, "#f2b56b"); gr.addColorStop(1, "#d98a4e");
+      g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
+      g.fillStyle = "rgba(120,70,40,0.55)"; g.fillRect(52, 52, 74, 54); g.fillRect(140, 46, 54, 44);
+      g.fillStyle = "rgba(255,240,200,0.8)"; g.fillRect(58, 58, 62, 42); g.fillRect(145, 51, 44, 34);
+      g.fillStyle = "rgba(90,40,30,0.75)"; g.fillRect(36, 178, 190, 52); g.fillRect(36, 150, 190, 34);
+      g.fillStyle = "rgba(60,30,25,0.8)"; g.fillRect(300, 168, 150, 62);
+      g.fillStyle = "rgba(90,130,70,0.35)";
+      g.beginPath(); g.arc(420, 60, 42, 0, 7); g.arc(462, 84, 30, 0, 7); g.fill();
+      g.fillStyle = "rgba(255,255,255,0.20)"; g.beginPath(); g.moveTo(0, 256); g.lineTo(200, 0); g.lineTo(300, 0); g.lineTo(90, 256); g.fill();
+    } else {
+      var gr2 = g.createLinearGradient(0, 0, 0, 256);
+      gr2.addColorStop(0, "#dfe9ec"); gr2.addColorStop(0.6, "#cfdde2"); gr2.addColorStop(1, "#b9cdd4");
+      g.fillStyle = gr2; g.fillRect(0, 0, 512, 256);
+      g.fillStyle = "rgba(240,238,230,0.9)"; g.fillRect(0, 30, 512, 120);
+      g.fillStyle = "rgba(150,60,50,0.65)"; g.fillRect(60, 176, 150, 48); g.fillRect(60, 152, 150, 28);
+      g.fillStyle = "rgba(90,100,110,0.5)"; g.fillRect(330, 60, 66, 50); g.fillRect(410, 66, 46, 38);
+      g.fillStyle = "rgba(255,255,255,0.28)"; g.beginPath(); g.moveTo(60, 256); g.lineTo(280, 0); g.lineTo(360, 0); g.lineTo(140, 256); g.fill();
+    }
+    g.fillStyle = "#22252a";
+    g.fillRect(0, 0, 512, 7); g.fillRect(0, 249, 512, 7);
+    g.fillRect(0, 0, 7, 256); g.fillRect(505, 0, 7, 256);
+    g.fillRect(168, 0, 7, 256); g.fillRect(338, 0, 7, 256);
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    return t;
+  }
+  function buildHome() {
+    var group = new THREE.Group();
+    var whiteMat = mat(0xf2f0ea, 0.75, 0.02);
+    var white2 = mat(0xe6e3da, 0.8, 0.02);
+    var towerMatH = mat(0x43464c, 0.8, 0.05);
+    var warmTex = homeGlassTexture(true);
+    var clearTex = homeGlassTexture(false);
+    var warmGlassMat = new THREE.MeshStandardMaterial({ map: warmTex, roughness: 0.12, metalness: 0.2, emissive: 0xffb45e, emissiveMap: warmTex, emissiveIntensity: 0.5 });
+    var clearGlassMat = new THREE.MeshStandardMaterial({ map: clearTex, roughness: 0.08, metalness: 0.25, emissive: 0xffc98a, emissiveMap: clearTex, emissiveIntensity: 0.22 });
+    windowMats.push(warmGlassMat); windowMats.push(clearGlassMat);
+    // glossy light-grey tiled forecourt / driveway in front of the house
+    var foreTex = groundTexture("#cfd2d4", "rgba(150,155,160,0.55)", true); foreTex.repeat.set(10, 5);
+    var fore = new THREE.Mesh(new THREE.BoxGeometry(35, 0.24, 16.5), new THREE.MeshStandardMaterial({ map: foreTex, roughness: 0.22, metalness: 0.08 }));
+    fore.position.set(0, 0.13, 13.6); fore.receiveShadow = true; group.add(fore);
+    group.add(box(29, 0.3, 2.2, concreteMat, 0, 0.15, 6.2, false)); // terrace slab
+    // --- right main block: two storeys, huge clear glass sliding doors below ---
+    var main = new THREE.Mesh(new THREE.BoxGeometry(13.5, 6.6, 10), whiteMat);
+    main.position.set(6.2, 3.52, 0); main.castShadow = true; main.receiveShadow = true; group.add(main);
+    var gfGlass = new THREE.Mesh(new THREE.BoxGeometry(12.6, 2.95, 0.1), clearGlassMat);
+    gfGlass.position.set(6.2, 1.72, 5.03); group.add(gfGlass);
+    var ufGlass = new THREE.Mesh(new THREE.BoxGeometry(12.6, 2.2, 0.1), clearGlassMat);
+    ufGlass.position.set(6.2, 5.35, 5.03); group.add(ufGlass);
+    group.add(box(14.3, 0.34, 10.8, roofMat, 6.2, 7.0, 0, false)); // flat roof slab
+    group.add(box(14.3, 0.09, 10.8, slabEdgeMat, 6.2, 7.2, 0, false));
+    group.add(box(13.4, 0.16, 1.15, concreteMat, 6.2, 3.82, 5.55, false)); // balcony slab
+    var railH = new THREE.Mesh(new THREE.BoxGeometry(13.2, 0.95, 0.06), glassRailMat); // glass balcony rail
+    railH.position.set(6.2, 4.35, 6.05); group.add(railH);
+    group.add(box(13.2, 0.06, 0.08, darkMetalMat, 6.2, 4.85, 6.05, false));
+    // --- dark grey central tower block, rising above the roofline ---
+    var towerH = new THREE.Mesh(new THREE.BoxGeometry(4.3, 9.4, 9.2), towerMatH);
+    towerH.position.set(-1.9, 4.92, -0.2); towerH.castShadow = true; towerH.receiveShadow = true; group.add(towerH);
+    group.add(box(4.7, 0.3, 9.6, roofMat, -1.9, 9.75, -0.2, false));
+    group.add(box(1.5, 2.6, 0.1, clearGlassMat, -1.9, 6.4, 4.45, false));
+    // --- left cantilevered upper box, floor-to-ceiling warm-lit glass ---
+    var cant = new THREE.Mesh(new THREE.BoxGeometry(10.6, 3.3, 9.6), white2);
+    cant.position.set(-9.9, 5.05, 0); cant.castShadow = true; cant.receiveShadow = true; group.add(cant);
+    var cantGlass = new THREE.Mesh(new THREE.BoxGeometry(10.0, 2.95, 0.1), warmGlassMat);
+    cantGlass.position.set(-9.9, 5.02, 4.83); group.add(cantGlass);
+    group.add(box(11.3, 0.3, 10.3, roofMat, -9.9, 6.85, 0, false));
+    group.add(box(11.3, 0.09, 10.3, slabEdgeMat, -9.9, 7.03, 0, false));
+    // recessed ground floor under the cantilever, glass front set back
+    var lowL = new THREE.Mesh(new THREE.BoxGeometry(9.6, 3.3, 8.4), whiteMat);
+    lowL.position.set(-9.9, 1.87, -0.7); lowL.castShadow = true; lowL.receiveShadow = true; group.add(lowL);
+    var lowGlass = new THREE.Mesh(new THREE.BoxGeometry(8.8, 2.8, 0.1), clearGlassMat);
+    lowGlass.position.set(-9.9, 1.72, 3.53); group.add(lowGlass);
+    // red outdoor sofas on the terrace, like the photo
+    function redSofa(x, z, rot) {
+      var sg = new THREE.Group(); var rm = mat(0xc22430, 0.85, 0);
+      sg.add(box(2.1, 0.42, 0.85, rm, 0, 0.32, 0));
+      sg.add(box(2.1, 0.55, 0.2, rm, 0, 0.72, -0.34));
+      sg.add(box(0.2, 0.3, 0.85, rm, -0.97, 0.62, 0)); sg.add(box(0.2, 0.3, 0.85, rm, 0.97, 0.62, 0));
+      sg.add(box(0.55, 0.34, 0.12, mat(0xf2efe8, 0.9, 0), -0.5, 0.66, -0.24, false));
+      sg.add(box(0.55, 0.34, 0.12, mat(0xf2efe8, 0.9, 0), 0.35, 0.66, -0.24, false));
+      sg.position.set(x, 0.26, z); sg.rotation.y = rot; group.add(sg);
+    }
+    redSofa(-11.6, 8.6, 0.06); redSofa(-7.6, 8.8, -0.05);
+    group.add(box(1.1, 0.3, 0.6, mat(0xd8d3c6, 0.4, 0.1), -9.6, 0.42, 7.2, false)); // terrace table
+    // small trees around the house, like the photo
+    function homeTree(x, z, s) {
+      var tg = new THREE.Group();
+      var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 1.5, 7), woodDarkMat);
+      trunk.position.y = 0.75; trunk.castShadow = true; tg.add(trunk);
+      var fol = mat(0x4a7a34, 0.95, 0);
+      [[0, 2.0, 0, 0.95], [0.55, 1.65, 0.15, 0.62], [-0.5, 1.75, -0.1, 0.58]].forEach(function (p) {
+        var f = new THREE.Mesh(new THREE.SphereGeometry(p[3], 8, 7), fol);
+        f.position.set(p[0], p[1], p[2]); f.castShadow = true; tg.add(f);
+      });
+      tg.position.set(x, 0.22, z); tg.scale.setScalar(s || 1); group.add(tg);
+    }
+    homeTree(-15.6, 3.4, 1.15); homeTree(-4.6, 6.9, 0.8); homeTree(14.9, 7.4, 1.0); homeTree(15.4, -3.4, 1.2);
+    // lawn strips at the sides of the plot
+    var lawnW = new THREE.Mesh(new THREE.PlaneGeometry(7, 20), getLawnMat());
+    lawnW.rotation.x = -Math.PI / 2; lawnW.position.set(-16.5, 0.235, -2); lawnW.receiveShadow = true; group.add(lawnW);
+    var lawnE = new THREE.Mesh(new THREE.PlaneGeometry(6, 20), getLawnMat());
+    lawnE.rotation.x = -Math.PI / 2; lawnE.position.set(16.2, 0.235, -2); lawnE.receiveShadow = true; group.add(lawnE);
+    // front door in the glass front of the main block + glowing entry ring
+    group.add(box(1.5, 2.9, 0.12, mat(0x2a2118, 0.5, 0.3), 6.2, 1.68, 5.1, false));
+    group.add(box(0.06, 0.5, 0.06, mat(0xd8a92c, 0.3, 0.9), 6.85, 1.55, 5.18, false));
+    [-1, 1].forEach(function (sd) {
+      group.add(box(0.16, 0.3, 0.16, mat(0xffc37a, 0.4, 0.1, 0xffb45e, 1.1), 6.2 + sd * 1.6, 2.7, 5.2, false));
+    });
+    var signH = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.44), new THREE.MeshBasicMaterial({ map: shopSignTexture("YOUR HOME", "#20242a", "#ffd34d") }));
+    signH.position.set(6.2, 3.32, 5.14); group.add(signH);
+    var ringH = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.22, 28),
+      new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+    ringH.rotation.x = -Math.PI / 2; ringH.position.set(6.2, 0.36, 7.6); group.add(ringH);
+    doorMarkers.push(ringH);
+    buildingEntries.push({ x: HOME_DOOR.x, z: HOME_DOOR.z, arch: "home", itype: "home", name: "Your Home — Modern House" });
+    addCollider(HOME_X, HOME_Z, 15.6, 6.3);
+    addCollider(HOME_X - 9.6, HOME_Z + 8.7, 2.9, 1.0); // red terrace sofas
+    group.position.set(HOME_X, 0, HOME_Z);
+    scene.add(group);
+  }
+  buildHome();
+  // paved driveway lane west from the forecourt to the city road grid
+  var homeLane = new THREE.Mesh(new THREE.PlaneGeometry(27, 5.6), getPathMat());
+  homeLane.rotation.x = -Math.PI / 2;
+  homeLane.position.set(139.5, 0.245, HOME_Z + 13.6); homeLane.receiveShadow = true; scene.add(homeLane);
 
   // ================================================================
   // WORLD LANDMARKS PARK — north of the city (head up the central
@@ -2159,6 +2930,77 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var playerBike = makeVehicle(buildBike, 0x2456a6, -8, 52, Math.PI * 0.9); // deep blue bike
   var playerVehicles = [playerCar, playerBike];
 
+  // ---------- Your supercar: the matte-black futuristic concept car ----------
+  // from the user's photo, parked on the driveway outside Your Home —
+  // low angular body, Y-shaped cyan LED headlights, glowing orange-red
+  // illuminated wheels, red accents and the little "63" badge at the rear.
+  function buildSuperCar() {
+    var g = new THREE.Group();
+    var paint = new THREE.MeshStandardMaterial({ color: 0x141519, roughness: 0.52, metalness: 0.35 });
+    var carbon = mat(0x0a0a0c, 0.4, 0.5);
+    var canopy = new THREE.MeshStandardMaterial({ color: 0x0d1218, roughness: 0.05, metalness: 0.6 });
+    var L = 4.8;
+    g.add(box(2.04, 0.52, L * 0.98, paint, 0, 0.5, 0));                        // low, wide body
+    var nose = box(1.92, 0.3, 1.35, paint, 0, 0.56, L * 0.36); nose.rotation.x = 0.09; g.add(nose); // wedge nose
+    g.add(box(2.08, 0.1, 0.55, carbon, 0, 0.2, L / 2 + 0.05));                // front splitter
+    g.add(box(1.7, 0.16, 0.9, carbon, 0, 0.34, L * 0.3, false));              // nose intake
+    g.add(box(1.52, 0.44, 2.25, canopy, 0, 0.88, -L * 0.05));                 // glass canopy
+    g.add(box(1.34, 0.07, 1.5, carbon, 0, 1.12, -L * 0.08));                  // carbon roof panel
+    var redGlow = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 0.9 });
+    [-1, 1].forEach(function (sd) {
+      g.add(box(0.07, 0.42, 1.15, carbon, sd * 1.0, 0.56, -L * 0.16, false)); // side air intakes
+      g.add(box(0.03, 0.035, 1.5, redGlow, sd * 1.03, 0.4, -L * 0.2, false)); // red side accent line
+    });
+    g.add(box(1.86, 0.24, 1.15, paint, 0, 0.72, -L * 0.36));                  // rear deck
+    g.add(box(0.09, 0.3, 0.75, carbon, 0, 0.98, -L * 0.42, false));           // rear fin
+    // Y-shaped LED headlights, cyan-white
+    var led = new THREE.MeshStandardMaterial({ color: 0xdffcff, emissive: 0xaef4ff, emissiveIntensity: 2.0 });
+    var ledDot = new THREE.MeshStandardMaterial({ color: 0xbffbff, emissive: 0x19d3e6, emissiveIntensity: 2.4 });
+    [-1, 1].forEach(function (sd) {
+      g.add(box(0.55, 0.045, 0.05, led, sd * 0.58, 0.64, L / 2 + 0.1, false));
+      var diag = box(0.05, 0.42, 0.05, led, sd * 0.82, 0.52, L / 2 + 0.1, false); diag.rotation.z = sd * 0.65; g.add(diag);
+      g.add(box(0.09, 0.05, 0.05, ledDot, sd * 0.34, 0.7, L / 2 + 0.1, false));
+    });
+    var tlS = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 1.1 });
+    g.add(box(1.55, 0.05, 0.05, tlS, 0, 0.68, -L / 2 - 0.06, false));         // full-width rear light bar
+    // "63" badge plate at the rear, like the reference car
+    var bc = document.createElement("canvas"); bc.width = 128; bc.height = 80;
+    var bg2 = bc.getContext("2d"); bg2.fillStyle = "#101114"; bg2.fillRect(0, 0, 128, 80);
+    bg2.fillStyle = "#f2f2ee"; bg2.font = "900 52px Arial"; bg2.textAlign = "center"; bg2.fillText("63", 64, 58);
+    var btex = new THREE.CanvasTexture(bc); btex.colorSpace = THREE.SRGBColorSpace;
+    var plate = box(0.44, 0.28, 0.04, carbon, 0.55, 0.98, -L * 0.44, false); plate.rotation.x = -0.18; g.add(plate);
+    var badge = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25), new THREE.MeshBasicMaterial({ map: btex }));
+    badge.position.set(0.55, 0.99, -L * 0.44 - 0.035); badge.rotation.y = Math.PI; badge.rotation.x = -0.18; g.add(badge);
+    // glowing orange-red illuminated wheels
+    function glowWheel() {
+      var w = new THREE.Group();
+      var tire = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.3, 20).rotateZ(Math.PI / 2), mat(0x0c0c0e, 0.9, 0));
+      tire.castShadow = true; w.add(tire);
+      var rimM = new THREE.MeshStandardMaterial({ color: 0x1c0d06, emissive: 0xff4d12, emissiveIntensity: 1.5, roughness: 0.4, metalness: 0.3 });
+      var rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.31, 18).rotateZ(Math.PI / 2), rimM); w.add(rim);
+      w.add(box(0.32, 0.08, 0.44, rimM, 0, 0, 0, false));
+      w.add(box(0.32, 0.44, 0.08, rimM, 0, 0, 0, false));
+      var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.33, 10).rotateZ(Math.PI / 2), mat(0x0a0a0c, 0.4, 0.5));
+      w.add(cap);
+      return w;
+    }
+    var wheels = [];
+    var archM = mat(0x060607, 0.95, 0);
+    [[-0.9, 1.5], [0.9, 1.5], [-0.9, -1.5], [0.9, -1.5]].forEach(function (p) {
+      var arch = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.1, 14).rotateZ(Math.PI / 2), archM);
+      arch.position.set(p[0] * 1.03, 0.41, p[1]); g.add(arch);
+      var w = glowWheel(); w.position.set(p[0], 0.41, p[1]); g.add(w); wheels.push(w);
+    });
+    var beam = new THREE.SpotLight(0xdff4ff, 0, 32, 0.5, 0.6);
+    beam.position.set(0, 0.65, L / 2);
+    var bt = new THREE.Object3D(); bt.position.set(0, 0, L / 2 + 14); g.add(bt); beam.target = bt; g.add(beam);
+    g.userData = { wheels: wheels, beam: beam, hl: led, tl: tlS, kind: "car", radius: 1.7, len: L };
+    return g;
+  }
+  var homeCar = makeVehicle(buildSuperCar, 0x141519, HOME_X, HOME_Z + 13.6, Math.PI + 0.1, { beam: true });
+  homeCar.topSpeed = 41; homeCar.accel = 20;
+  playerVehicles.push(homeCar);
+
   // ---------- Traffic ----------
   var trafficColors = [0xe8e8ea, 0xc0c4c9, 0x23262b, 0x39506b, 0x7a1f24, 0x4c5548, 0x8a8d91, 0x1f2c38, 0xd9d4c8, 0x5b3a2a];
   var traffic = [];
@@ -2298,7 +3140,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     luxury:    { ox: 0,   oz: 545, W: 32, D: 23, H: 4.1, title: "Luxury Tower Flat — panoramic lounge, piano & fireplace" },
     hotel:     { ox: 78,  oz: 545, W: 30, D: 22, H: 3.9, title: "Hotel — lobby, reception & suite bedroom" },
     office:    { ox: -78, oz: 622, W: 34, D: 24, H: 4.2, title: "Sky Office — open-plan desks, meeting room & coffee bar" },
-    hall:      { ox: 32,  oz: 622, W: 38, D: 27, H: 8.2, title: "Grand Hall — columns, chandelier & banquet table" }
+    hall:      { ox: 32,  oz: 622, W: 38, D: 27, H: 8.2, title: "Grand Hall — columns, chandelier & banquet table" },
+    home:      { ox: 156, oz: 545, W: 30, D: 22, H: 4.0, title: "Your Home — lounge, kitchen, bedroom & bath" }
   };
   var interiorPeds = [];
   var insideLabelEl = document.getElementById("inside-label");
@@ -2740,6 +3583,35 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     interiorNPC(Hh, 3.2, 3.8, -0.7, { skin: 0xa06a35, shirt: 0x2e2e33, bottom: 0x2e2e33, hair: 0x8a8d90, hairStyle: 1 });
     Hh.group.traverse(function (m) { if (m.isMesh) { m.castShadow = false; m.receiveShadow = true; } });
     Hh.group.visible = false; scene.add(Hh.group);
+
+    // ---------- YOUR HOME (the separate modern house, east of the city) ----------
+    var Hm = INTERIOR_DEFS.home; Hm.group = new THREE.Group(); Hm.colliders = [];
+    buildShell(Hm, { wall: "#f0e9dc", curtain: 0xb03a2e, windows: 3 });
+    iBox(Hm, 6.4, 0.035, 4.2, mat(0x8a8d90, 0.98, 0), -6, 0.03, -6.6); // pale rug under the lounge
+    mkTVUnit(Hm, -6, -10.35, 0);
+    mkSofa(Hm, -6, -6.4, Math.PI, 0xc22430, 3.2); // red sofa, matching the terrace set outside
+    mkSofa(Hm, -11.8, -6.4, Math.PI / 2, 0x35424e, 2.4);
+    iBox(Hm, 1.4, 0.4, 0.75, woodMat, -6, 0.2, -8.7); addICol(Hm, -6, -8.7, 0.75, 0.45); // coffee table
+    mkShelf(Hm, -14.35, -2.5, Math.PI / 2);
+    mkPainting(Hm, 6.5, 2.2, -10.8, 0, 0, 2.2);
+    mkPainting(Hm, -14.8, 2.1, 3.5, Math.PI / 2, 1, 1.9);
+    mkPlant(Hm, -13.7, -9.8, 1.1); mkPlant(Hm, 13.8, -10.2, 0.95);
+    mkDining(Hm, 4.5, 3.8, 0x6b4a2f);
+    mkKitchen(Hm, 1);
+    iBox(Hm, 2.6, 0.9, 1.05, mat(0xe8e2d4, 0.4, 0.05), 10.6, 0.45, 3.2); addICol(Hm, 10.6, 3.2, 1.35, 0.6); // island
+    // bedroom zone (north-east, behind a partial partition)
+    iBox(Hm, 0.22, Hm.H, 6.4, mat(0xe6ddcb, 0.94, 0), 2.6, Hm.H / 2, -7.6);
+    mkBed(Hm, 9.2, -8.2, 0, 0xc22430);
+    iBox(Hm, 2.4, 2.3, 0.62, woodMat, 14.4, 1.15, -6.4); addICol(Hm, 14.4, -6.4, 1.25, 0.4); // wardrobe
+    mkDesk(Hm, 5.2, -10.2, 0, false);
+    iBox(Hm, 5.2, 0.03, 3.4, mat(0x3f6212, 0.98, 0), 9.2, 0.03, -8.2); // bedroom rug
+    // bathroom (south-east corner, low partition)
+    iBox(Hm, 6.4, 2.2, 0.18, mat(0xdfe5e2, 0.9, 0), 11.6, 1.1, 5.2);
+    iBox(Hm, 0.18, 2.2, 5.6, mat(0xdfe5e2, 0.9, 0), 8.5, 1.1, 8.0);
+    mkBath(Hm, 12.6, 9.2);
+    interiorNPC(Hm, -9.8, -4.2, 2.4, { skin: 0xe0ac69, shirt: 0xd9d4c8, bottom: 0x2f4a73, hair: 0x3a2417, hairStyle: 2 });
+    Hm.group.traverse(function (m) { if (m.isMesh) { m.castShadow = false; m.receiveShadow = true; } });
+    Hm.group.visible = false; scene.add(Hm.group);
   }
   buildInteriors();
 
@@ -2839,6 +3711,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
 
   // ---------- Audio (synthesized, created on first tap) ----------
   var AC = null, engineOsc = null, engineGain = null, skidOsc = null, skidGain = null;
+  // Settings (session-only, changed from the gear button top-right)
+  var soundOn = true, timeScale = 1, graphicsQ = "high";
   function initAudio() {
     if (AC) { if (AC.state === "suspended") AC.resume(); return; }
     try {
@@ -2856,7 +3730,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     } catch (e) { AC = null; }
   }
   function beep(freq, dur, type, vol, when) {
-    if (!AC) return;
+    if (!AC || !soundOn) return;
     var t = AC.currentTime + (when || 0);
     var o = AC.createOscillator(), g = AC.createGain();
     o.type = type || "sine"; o.frequency.value = freq;
@@ -3130,6 +4004,29 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     toast(CAM_VIEWS[camView].toUpperCase(), "Press C or tap CAMERA to change angle");
     sndClick();
   }
+  function setCamView(i) {
+    camView = ((i % CAM_VIEWS.length) + CAM_VIEWS.length) % CAM_VIEWS.length;
+    camSnap = true;
+    el("view-name").textContent = CAM_VIEWS[camView];
+  }
+  // Settings → Graphics: High keeps full resolution + soft shadows;
+  // Smooth caps the resolution and turns shadows off for weaker phones.
+  function applyQuality(q) {
+    graphicsQ = q;
+    if (q === "high") {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.shadowMap.enabled = true;
+    } else {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1));
+      renderer.shadowMap.enabled = false;
+    }
+    scene.traverse(function (o) {
+      if (o.material) {
+        var ms = Array.isArray(o.material) ? o.material : [o.material];
+        ms.forEach(function (m) { m.needsUpdate = true; });
+      }
+    });
+  }
   window.addEventListener("keydown", function (e) {
     keys[e.code] = true;
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].indexOf(e.code) >= 0) e.preventDefault();
@@ -3330,7 +4227,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var inp = inputAxis();
     var moving = inp.x !== 0 || inp.z !== 0;
     var run = keys["ShiftLeft"] || keys["ShiftRight"];
-    var spd = run ? 10.5 : 6;
+    var spd = (run ? 10.5 : 6) * (G.boostT > 0 ? 1.45 : 1);
     if (moving) {
       // Camera forward on the ground plane, from camYaw
       var fwdX = -Math.sin(camYaw), fwdZ = -Math.cos(camYaw);
@@ -3444,9 +4341,9 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     if (isPlayer && AC) {
       var rpm = Math.abs(v.speed) / v.topSpeed;
       engineOsc.frequency.value = 55 + rpm * 165;
-      engineGain.gain.value = 0.028 + rpm * 0.05;
+      engineGain.gain.value = soundOn ? 0.028 + rpm * 0.05 : 0;
       var skidding = handbrake && Math.abs(v.speed) > 8;
-      skidGain.gain.value = skidding ? 0.035 : 0;
+      skidGain.gain.value = (soundOn && skidding) ? 0.035 : 0;
       skidOsc.frequency.value = 1300 + Math.random() * 300;
     }
     if (isPlayer) speedEl.textContent = Math.round(Math.abs(v.speed) * 3.6);
@@ -3710,8 +4607,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       lastT = now;
       var tNow = now / 1000;
 
-      // clock: 1 real second = 1 game minute
-      G.timeH += dt / 60;
+      // clock: 1 real second = 1 game minute (× the Settings time speed)
+      G.timeH += dt / 60 * timeScale;
       if (G.timeH >= 24) G.timeH -= 24;
       updateSky();
 
@@ -3814,6 +4711,9 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     hudEl.style.display = "block";
     touchEl.style.display = "block";
     el("btn-view").style.display = "block";
+    el("map-toggle").style.display = "flex";
+    el("profile-toggle").style.display = "flex";
+    el("settings-toggle").style.display = "flex";
     refreshMarkers();
     updateObjectiveIdle();
     updateHUD();
@@ -3848,9 +4748,433 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     camYaw = 0;
     toast("BACK ON THE BEACHFRONT", "Three jobs waiting");
   }
+  // ---------- Map, person profile & backpack ----------
+  // A live city map (mini + full) that always shows where the player is,
+  // a profile card for the hero, and a backpack of things allocated to
+  // him to carry — he wears the pack in 3D, and job parcels join it.
+  G.boostT = 0;
+  (function addBackpackMesh() {
+    var pack = new THREE.Group();
+    pack.add(box(0.46, 0.58, 0.2, mat(0x27354e, 0.85, 0.05), 0, 0, 0));
+    pack.add(box(0.48, 0.15, 0.22, mat(0xff2e88, 0.65, 0), 0, 0.24, 0));
+    pack.add(box(0.3, 0.3, 0.06, mat(0x19d3e6, 0.6, 0), 0, -0.05, -0.13));
+    pack.add(box(0.07, 0.34, 0.05, mat(0xd8a92c, 0.5, 0.4), 0.18, 0.02, 0.1));
+    pack.position.set(0, 1.14, -0.27);
+    hero.add(pack);
+  })();
+  var parcelMesh = box(0.34, 0.26, 0.3, mat(0xb08954, 0.9, 0), 0, -0.62, 0.16);
+  parcelMesh.visible = false;
+  if (hero.userData.armR) hero.userData.armR.add(parcelMesh);
+
+  var LANDMARKS = [
+    { x: -152, z: -174, n: "Eiffel Tower" }, { x: -103, z: -174, n: "Big Ben" },
+    { x: -54, z: -174, n: "Statue of Liberty" }, { x: -2, z: -174, n: "Sydney Opera House" },
+    { x: 48, z: -174, n: "Leaning Tower of Pisa" }, { x: 102, z: -174, n: "Colosseum" },
+    { x: 156, z: -174, n: "London Eye" }
+  ];
+  function compass8(dx, dz) {
+    var dirs = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+    var i = Math.round(Math.atan2(dx, -dz) / (Math.PI / 4));
+    return dirs[((i % 8) + 8) % 8];
+  }
+  function playerMapPos() {
+    if (G.inside && G.inside.x != null) return { x: G.inside.x, z: G.inside.z };
+    var p = playerPos();
+    return { x: p.x, z: p.z };
+  }
+  function playerHeading() {
+    return (G.mode === "car" && G.drivingVehicle) ? G.drivingVehicle.heading : heroState.heading;
+  }
+  function zoneName() {
+    if (G.inside) return "Inside — " + G.inside.name;
+    var p = playerPos();
+    if (p.z >= 104) return "The Ocean";
+    if (p.z >= BEACH_Z) return "The Beach";
+    if (p.z >= 62) return "Ocean Drive Promenade";
+    if (p.z <= -148) return "World Landmarks Park";
+    if (Math.hypot(p.x - HARBOUR.x, p.z - HARBOUR.z) < 26) return "Harbour Warehouses";
+    if (Math.hypot(p.x - CLUB.x, p.z - CLUB.z) < 20) return "Club Neon · Ocean Drive";
+    if (Math.hypot(p.x - HOME_X, p.z - HOME_Z) < 24) return "Your Home · East Neon Bay";
+    var ns = p.z < -44 ? "North" : (p.z > 20 ? "South" : "Central");
+    var ew = p.x < -30 ? " West" : (p.x > 30 ? " East" : "");
+    return ns + ew + " Neon Bay";
+  }
+
+  var MAP_EXT = { x0: -200, x1: 200, z0: -200, z1: 120 };
+  var mapPing = { x: 0, z: 0, t: 0 };
+  function drawMap(cv, big) {
+    var ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+    var sx = W / (MAP_EXT.x1 - MAP_EXT.x0), sz = H / (MAP_EXT.z1 - MAP_EXT.z0);
+    function X(x) { return (x - MAP_EXT.x0) * sx; }
+    function Y(z) { return (z - MAP_EXT.z0) * sz; }
+    var tNow = performance.now() / 1000;
+    ctx.fillStyle = "#232b3d"; ctx.fillRect(0, 0, W, H);
+    // landmarks park (north strip)
+    ctx.fillStyle = "#2b4530"; ctx.fillRect(0, 0, W, Y(-146));
+    // promenade, sand, ocean (south)
+    ctx.fillStyle = "#8f8474"; ctx.fillRect(0, Y(62), W, Y(BEACH_Z) - Y(62));
+    ctx.fillStyle = "#dcc08e"; ctx.fillRect(0, Y(BEACH_Z), W, Y(108) - Y(BEACH_Z));
+    ctx.fillStyle = "#1d6f8e"; ctx.fillRect(0, Y(108), W, H - Y(108));
+    // city blocks
+    ctx.fillStyle = "#333d54";
+    for (var bx = -3; bx <= 3; bx++) for (var bz = -3; bz <= 1; bz++) {
+      ctx.fillRect(X(bx * BLOCK - 15.5), Y(bz * BLOCK - 15.5), 31 * sx, 31 * sz);
+    }
+    // roads
+    ctx.strokeStyle = "#12161f"; ctx.lineWidth = Math.max(3, 12 * sx); ctx.beginPath();
+    for (var vx = -3; vx <= 3; vx++) { ctx.moveTo(X(vx * BLOCK), 0); ctx.lineTo(X(vx * BLOCK), Y(62)); }
+    for (var hz = -3; hz <= 0; hz++) { ctx.moveTo(0, Y(hz * BLOCK)); ctx.lineTo(W, Y(hz * BLOCK)); }
+    ctx.moveTo(0, Y(58)); ctx.lineTo(W, Y(58));
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,176,32,.75)"; ctx.lineWidth = 1.4; ctx.beginPath();
+    ctx.moveTo(0, Y(58)); ctx.lineTo(W, Y(58)); ctx.stroke();
+    function dot(x, z, color, r, ring) {
+      ctx.beginPath(); ctx.arc(X(x), Y(z), r, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+      if (ring) { ctx.lineWidth = 1.6; ctx.strokeStyle = ring; ctx.stroke(); }
+    }
+    function label(txt, x, z, color, align) {
+      ctx.font = "700 " + (big ? 17 : 10) + "px 'Segoe UI', sans-serif";
+      ctx.textAlign = align || "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = color; ctx.fillText(txt, X(x), Y(z));
+    }
+    // building doors
+    ctx.fillStyle = "rgba(154,163,178,.8)";
+    var bs = big ? 4.4 : 2.4;
+    buildingEntries.forEach(function (e) { ctx.fillRect(X(e.x) - bs / 2, Y(e.z) - bs / 2, bs, bs); });
+    // YOUR HOME — its own plot east of the grid, gold marker, labelled HOME
+    ctx.fillStyle = "rgba(255,211,77,.13)";
+    ctx.fillRect(X(HOME_X - 19), Y(HOME_Z - 9), 38 * sx, 32 * sz);
+    dot(HOME_DOOR.x, HOME_DOOR.z, "#ffd34d", big ? 8 : 5, "#0a0c1a");
+    label("HOME", HOME_X, HOME_Z - 13, "#ffd34d");
+    // landmarks
+    LANDMARKS.forEach(function (L) { dot(L.x, L.z, "#ffb020", big ? 6 : 3.4, "#0a0c1a"); });
+    // harbour & club
+    dot(HARBOUR.x, HARBOUR.z, "#b08954", big ? 6 : 3.4, "#0a0c1a");
+    dot(CLUB.x, CLUB.z, "#ff2e88", big ? 6 : 3.4, "#0a0c1a");
+    if (big) {
+      label("WORLD LANDMARKS PARK", 0, -188, "rgba(220,255,220,.85)");
+      label("HARBOUR", HARBOUR.x, HARBOUR.z - 12, "rgba(244,241,234,.8)");
+      label("CLUB NEON", CLUB.x, CLUB.z - 12, "rgba(255,180,215,.9)");
+      label("OCEAN DRIVE", -120, 52, "rgba(255,214,130,.85)");
+      label("THE BEACH", -120, 92, "rgba(90,70,40,.85)");
+      label("OCEAN", 120, 114, "rgba(220,245,255,.9)");
+      ctx.font = "600 13px 'Segoe UI', sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "rgba(220,255,220,.65)";
+      LANDMARKS.forEach(function (L) { ctx.fillText(L.n.split(" ")[0], X(L.x), Y(L.z) + 15); });
+    }
+    // job markers still open
+    if (!G.jobsDone.story && markerStory.visible) dot(markerStory.position.x, markerStory.position.z, "#ff2e88", big ? 8 : 4.6, "#fff");
+    if (!G.jobsDone.race && markerRace.visible) dot(markerRace.position.x, markerRace.position.z, "#19d3e6", big ? 8 : 4.6, "#fff");
+    if (!G.jobsDone.taxi && markerTaxi.visible) dot(markerTaxi.position.x, markerTaxi.position.z, "#ffb020", big ? 8 : 4.6, "#fff");
+    // mission target / race checkpoint
+    var tgt = M.target;
+    if (M.active === "race" && raceCpIndex < RACE_CPS.length) tgt = RACE_CPS[raceCpIndex];
+    if (tgt && !G.inside) {
+      var pr = (big ? 10 : 6) + Math.sin(tNow * 4) * 2;
+      dot(tgt.x, tgt.z, "#7dff9a", pr, "#0a0c1a");
+      ctx.beginPath(); ctx.arc(X(tgt.x), Y(tgt.z), pr + 5 + Math.sin(tNow * 4) * 2, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(125,255,154,.7)"; ctx.lineWidth = 2; ctx.stroke();
+    }
+    // your vehicles (skip the one being driven — the arrow is there)
+    if (G.drivingVehicle !== playerCar) dot(playerCar.mesh.position.x, playerCar.mesh.position.z, "#e2493b", big ? 7 : 4, "#fff");
+    if (G.drivingVehicle !== playerBike) dot(playerBike.mesh.position.x, playerBike.mesh.position.z, "#4d7dd1", big ? 7 : 4, "#fff");
+    if (typeof homeCar !== "undefined" && G.drivingVehicle !== homeCar) dot(homeCar.mesh.position.x, homeCar.mesh.position.z, "#141519", big ? 7 : 4, "#ffffff");
+    // police on the big map always; on the mini-map when wanted
+    if (big || G.wanted > 0) cops.forEach(function (c) { dot(c.mesh.position.x, c.mesh.position.z, "#4d7dd1", big ? 6 : 3.6, "#dbe7ff"); });
+    // vehicle-locate ping
+    if (mapPing.t > 0) {
+      var pring = ((tNow * 1.6) % 1) * (big ? 34 : 20) + 4;
+      ctx.beginPath(); ctx.arc(X(mapPing.x), Y(mapPing.z), pring, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 2.4; ctx.stroke();
+      dot(mapPing.x, mapPing.z, "#ffffff", big ? 6 : 4, "#ff2e88");
+    }
+    // YOU — arrow that turns with the hero / vehicle heading
+    var pp = playerMapPos(), px = X(pp.x), py = Y(pp.z), hd = playerHeading();
+    var ang = Math.atan2(Math.cos(hd), Math.sin(hd));
+    ctx.beginPath(); ctx.arc(px, py, (big ? 15 : 10) + Math.sin(tNow * 3) * 1.6, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.save(); ctx.translate(px, py); ctx.rotate(ang);
+    var s = big ? 13 : 8.5;
+    ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s * 0.75, s * 0.62); ctx.lineTo(-s * 0.35, 0); ctx.lineTo(-s * 0.75, -s * 0.62); ctx.closePath();
+    ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#ff2e88"; ctx.stroke();
+    ctx.restore();
+    if (big) label("YOU", pp.x, pp.z + 13, "#ffffff");
+  }
+
+  // ----- backpack: the things allocated to him to carry -----
+  var ICONS = {
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2.5" width="10" height="19" rx="2"/><line x1="10.5" y1="18.5" x2="13.5" y2="18.5"/></svg>',
+    key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="14" r="4.5"/><path d="M11.5 10.5 L20 2.5 M17 5.5 L20 8.5 M14.5 8 L17.5 11"/></svg>',
+    wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="2.5"/><path d="M2.5 10 L21.5 10" opacity=".55"/><circle cx="17.4" cy="14.6" r="1.3" fill="currentColor" stroke="none"/></svg>',
+    water: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 2.5 h4 M10.8 2.5 v3 L8 9 v10.5 a2 2 0 0 0 2 2 h4 a2 2 0 0 0 2-2 V9 L13.2 5.5 v-3"/><path d="M8 13.5 h8" opacity=".55"/></svg>',
+    bar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="8" width="17" height="8.5" rx="2"/><path d="M8 8 v8.5 M16 8 v8.5" opacity=".55"/><path d="M10.5 12.2 l2-1.8 2 1.8" /></svg>',
+    pkg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3.5 8 L12 3.5 L20.5 8 V16 L12 20.5 L3.5 16 Z"/><path d="M3.5 8 L12 12.5 L20.5 8 M12 12.5 V20.5"/></svg>'
+  };
+  var bagItems = [
+    { id: "phone", icon: "phone", name: "Phone", desc: "Your phone — the whole Neon Bay map in your pocket.", btn: "Open map", act: "map" },
+    { id: "key", icon: "key", name: "Vehicle Key", desc: "Key fob for your red car and blue bike on the beachfront — and your black supercar, parked on the driveway at Your Home.", btn: "Find vehicle", act: "locate" },
+    { id: "wallet", icon: "wallet", name: "Wallet", desc: "Holds your cash and cards — check what you are carrying.", btn: "Check cash", act: "wallet" },
+    { id: "water", icon: "water", name: "Water Bottle", desc: "A cold bottle from the beach kiosk. Drink it for a burst of speed on foot.", btn: "Drink", act: "boost", secs: 12, qty: 2 },
+    { id: "bar", icon: "bar", name: "Energy Bar", desc: "Beach-shop energy bar. Eat it for a longer burst of speed on foot.", btn: "Eat", act: "boost", secs: 20, qty: 2 }
+  ];
+  function carryingPackage() { return M.active === "story" && M.stage === 2; }
+  function bagSlots() { return bagItems.length + (carryingPackage() ? 1 : 0); }
+
+  var mapPanel = el("map-panel"), profPanel = el("profile-panel"), settingsPanel = el("settings-panel");
+  function openMap() { if (!G.started) return; profPanel.classList.remove("open"); settingsPanel.classList.remove("open"); el("settings-toggle").classList.remove("is-open"); mapPanel.classList.add("open"); drawMap(el("bigmap"), true); refreshMapText(); }
+  function closeMap() { mapPanel.classList.remove("open"); }
+  function openProfile(toBag) {
+    if (!G.started) return;
+    mapPanel.classList.remove("open"); settingsPanel.classList.remove("open"); el("settings-toggle").classList.remove("is-open");
+    renderBag(); refreshProfile();
+    profPanel.classList.add("open");
+    if (toBag) { var bs = el("bag-section"); if (bs) bs.scrollIntoView({ block: "start" }); }
+  }
+  function closeProfile() { profPanel.classList.remove("open"); }
+  function refreshMapText() {
+    var html = "You are at <b>" + zoneName() + "</b> · Cash <b>$" + G.money + "</b>";
+    if (M.target && !G.inside) html += " · Target <b>" + Math.round(distTo(M.target.x, M.target.z)) + " m</b> to the <b>" + compass8(M.target.x - playerPos().x, M.target.z - playerPos().z) + "</b>";
+    el("bigmap-loc").innerHTML = html;
+  }
+  function refreshProfile() {
+    var lvl = G.respect >= 300 ? 3 : (G.respect >= 170 ? 2 : (G.respect >= 70 ? 1 : 0));
+    el("prof-rank").textContent = respectNames[lvl] + " · Respect " + G.respect + (G.boostT > 0 ? " · Speed boost " + Math.ceil(G.boostT) + "s left" : "");
+    el("ps-cash").textContent = "$" + G.money;
+    el("ps-respect").textContent = respectNames[lvl] + " (" + G.respect + ")";
+    var w = Math.round(G.wanted);
+    el("ps-wanted").textContent = w > 0 ? "★".repeat(w) + " (" + w + " / 5)" : "Clear";
+    el("ps-mode").textContent = G.inside ? "Inside a building" : (G.mode === "car" && G.drivingVehicle ? "Driving the " + (G.drivingVehicle.kind === "bike" ? "bike" : "car") : "On foot");
+    el("ps-loc").textContent = zoneName();
+    el("ps-misc").textContent = clockEl.textContent + " · " + CAM_VIEWS[camView];
+    var jobs = [["Package Run", G.jobsDone.story], ["Beach Race", G.jobsDone.race], ["Taxi Job", G.jobsDone.taxi]];
+    el("ps-jobs").innerHTML = jobs.map(function (j) {
+      return '<div class="job-line">' + (j[1] ? '<span class="done">✓ Done</span>' : "○ To do") + " — " + j[0] + "</div>";
+    }).join("");
+    el("bag-cap").textContent = "— " + bagSlots() + " / 6 slots filled";
+    el("bag-badge").textContent = bagSlots();
+  }
+  function renderBag() {
+    var html = bagItems.map(function (it) {
+      var qty = it.qty != null ? ' <span class="qty">× ' + it.qty + "</span>" : "";
+      var dis = (it.qty != null && it.qty <= 0) ? " disabled" : "";
+      var btnTxt = (it.qty != null && it.qty <= 0) ? "Empty" : it.btn;
+      return '<div class="bag-item">' + ICONS[it.icon] + "<div><h4>" + it.name + qty + "</h4><p>" + it.desc + '</p><button type="button" class="use-btn" data-act="' + it.act + '" data-id="' + it.id + '"' + dis + ">" + btnTxt + "</button></div></div>";
+    }).join("");
+    if (carryingPackage()) {
+      html += '<div class="bag-item">' + ICONS.pkg + '<div><h4>Courier Package <span class="qty">· job item</span></h4><p>Sealed parcel picked up at the harbour — he is carrying it in his hand and pack. Deliver it to Club Neon on Ocean Drive.</p><button type="button" class="use-btn" data-act="pkg">See on map</button></div></div>';
+    } else {
+      html += '<div class="bag-item empty-slot">' + ICONS.pkg + '<div><h4>Job slot — empty</h4><p>Spare room in the pack. Parcels and job items he picks up are carried here.</p></div></div>';
+    }
+    el("bag-grid").innerHTML = html;
+  }
+  function useItem(act, id) {
+    initAudio();
+    if (act === "map") { closeProfile(); openMap(); return; }
+    if (act === "pkg") { closeProfile(); openMap(); return; }
+    if (act === "locate") {
+      var pp2 = playerPos(), v = null, bestVd = 1e9;
+      playerVehicles.forEach(function (pv) {
+        if (pv === G.drivingVehicle) return;
+        var dd2 = Math.hypot(pv.mesh.position.x - pp2.x, pv.mesh.position.z - pp2.z);
+        if (dd2 < bestVd) { bestVd = dd2; v = pv; }
+      });
+      if (!v) v = playerCar;
+      var vp = v.mesh.position;
+      var d = Math.round(Math.hypot(vp.x - pp2.x, vp.z - pp2.z));
+      mapPing.x = vp.x; mapPing.z = vp.z; mapPing.t = 10;
+      toast("YOUR " + (v === playerBike ? "BIKE" : (typeof homeCar !== "undefined" && v === homeCar ? "SUPERCAR" : "CAR")), d + " m to the " + compass8(vp.x - pp2.x, vp.z - pp2.z) + " — follow the white ping");
+      sndClick(); closeProfile(); openMap(); return;
+    }
+    if (act === "wallet") { toast("WALLET", "$" + G.money + " cash · Respect " + G.respect); sndCash(); return; }
+    if (act === "boost") {
+      var it = null;
+      bagItems.forEach(function (b) { if (b.id === id) it = b; });
+      if (!it || it.qty <= 0) return;
+      if (G.mode !== "foot" || G.inside) { toast("ON FOOT ONLY", "Step outside and out of the vehicle to use this"); return; }
+      it.qty--;
+      G.boostT = Math.max(G.boostT, it.secs);
+      toast(it.id === "water" ? "REFRESHED!" : "ENERGY!", "Speed boost — " + it.secs + "s on foot");
+      sndClick(); renderBag(); refreshProfile();
+    }
+  }
+  el("bag-grid").addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-act]") : null;
+    if (b && !b.disabled) useItem(b.getAttribute("data-act"), b.getAttribute("data-id"));
+  });
+  // ----- Separate left panels: MAP on its own, PROFILE on its own -----
+  // Two round buttons, top left. Each opens only its own panel; opening
+  // one closes the other. The gear button (top right) opens Settings.
+  var mapUiOpen = false, profileUiOpen = false;
+  function syncSideToggles() {
+    var mt = el("map-toggle"), pt = el("profile-toggle");
+    mt.classList.toggle("is-open", mapUiOpen);
+    mt.setAttribute("aria-expanded", mapUiOpen ? "true" : "false");
+    mt.setAttribute("aria-label", mapUiOpen ? "Hide the total city map" : "Show the total city map");
+    var ml = mt.querySelector(".side-toggle-label");
+    if (ml) ml.textContent = mapUiOpen ? "HIDE" : "MAP";
+    pt.classList.toggle("is-open", profileUiOpen);
+    pt.setAttribute("aria-expanded", profileUiOpen ? "true" : "false");
+    pt.setAttribute("aria-label", profileUiOpen ? "Hide your profile" : "Show your profile");
+    var pl = pt.querySelector(".side-toggle-label");
+    if (pl) pl.textContent = profileUiOpen ? "HIDE" : "PROFILE";
+    document.body.classList.toggle("dock-open", mapUiOpen || profileUiOpen);
+  }
+  function setMapUi(open) {
+    mapUiOpen = !!open;
+    if (mapUiOpen) profileUiOpen = false;
+    el("map-ui").classList.toggle("open", mapUiOpen);
+    el("profile-ui").classList.toggle("open", profileUiOpen);
+    syncSideToggles();
+    if (mapUiOpen) drawMap(el("minimap"), true);
+  }
+  function setProfileUi(open) {
+    profileUiOpen = !!open;
+    if (profileUiOpen) mapUiOpen = false;
+    el("profile-ui").classList.toggle("open", profileUiOpen);
+    el("map-ui").classList.toggle("open", mapUiOpen);
+    syncSideToggles();
+  }
+  function closeSideUis() { mapUiOpen = false; profileUiOpen = false; el("map-ui").classList.remove("open"); el("profile-ui").classList.remove("open"); syncSideToggles(); }
+  el("map-toggle").addEventListener("click", function () { initAudio(); setMapUi(!mapUiOpen); sndClick(); });
+  el("profile-toggle").addEventListener("click", function () { initAudio(); setProfileUi(!profileUiOpen); sndClick(); });
+  el("map-ui-close").addEventListener("click", function (e) { e.stopPropagation(); initAudio(); setMapUi(false); sndClick(); });
+  el("profile-ui-close").addEventListener("click", function (e) { e.stopPropagation(); initAudio(); setProfileUi(false); sndClick(); });
+  el("minimap-box").addEventListener("click", function () { initAudio(); openMap(); });
+  el("dock-profile").addEventListener("click", function () { initAudio(); openProfile(false); });
+  el("btn-profile").addEventListener("click", function () { initAudio(); openProfile(false); });
+  el("btn-bag").addEventListener("click", function () { initAudio(); openProfile(true); });
+  el("prof-name").addEventListener("keydown", function (e) { e.stopPropagation(); });
+  el("prof-name").addEventListener("keyup", function (e) { e.stopPropagation(); });
+  el("close-map").addEventListener("click", closeMap);
+  el("close-profile").addEventListener("click", closeProfile);
+  mapPanel.addEventListener("click", function (e) { if (e.target === mapPanel) closeMap(); });
+  profPanel.addEventListener("click", function (e) { if (e.target === profPanel) closeProfile(); });
+
+  // ----- Settings (gear button, top right) -----
+  function refreshSettings() {
+    settingsPanel.querySelectorAll("[data-set]").forEach(function (b) {
+      var kind = b.getAttribute("data-set"), val = b.getAttribute("data-val"), on = false;
+      if (kind === "sound") on = (val === "on") === soundOn;
+      else if (kind === "camera") on = parseInt(val, 10) === camView;
+      else if (kind === "graphics") on = val === graphicsQ;
+      else if (kind === "time") on = parseInt(val, 10) === timeScale;
+      b.classList.toggle("on", on);
+    });
+  }
+  function openSettings() {
+    if (!G.started) return;
+    mapPanel.classList.remove("open"); profPanel.classList.remove("open");
+    refreshSettings();
+    settingsPanel.classList.add("open");
+    el("settings-toggle").classList.add("is-open");
+    el("settings-toggle").setAttribute("aria-expanded", "true");
+  }
+  function closeSettings() {
+    settingsPanel.classList.remove("open");
+    el("settings-toggle").classList.remove("is-open");
+    el("settings-toggle").setAttribute("aria-expanded", "false");
+  }
+  el("settings-toggle").addEventListener("click", function () {
+    initAudio();
+    if (settingsPanel.classList.contains("open")) closeSettings(); else openSettings();
+    sndClick();
+  });
+  el("close-settings").addEventListener("click", function () { initAudio(); closeSettings(); sndClick(); });
+  settingsPanel.addEventListener("click", function (e) { if (e.target === settingsPanel) closeSettings(); });
+  settingsPanel.querySelectorAll("[data-set]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      initAudio();
+      var kind = b.getAttribute("data-set"), val = b.getAttribute("data-val");
+      if (kind === "sound") {
+        soundOn = val === "on";
+        if (!soundOn && AC) { if (engineGain) engineGain.gain.value = 0; if (skidGain) skidGain.gain.value = 0; }
+        toast(soundOn ? "SOUND ON" : "SOUND OFF", "Engine and game sounds");
+      } else if (kind === "camera") {
+        setCamView(parseInt(val, 10));
+        toast(CAM_VIEWS[camView].toUpperCase(), "Camera angle set in Settings");
+      } else if (kind === "graphics") {
+        applyQuality(val);
+        toast(val === "high" ? "GRAPHICS — HIGH" : "GRAPHICS — SMOOTH", val === "high" ? "Sharp picture with shadows" : "Faster picture, shadows off");
+      } else if (kind === "time") {
+        timeScale = parseInt(val, 10);
+        toast(timeScale === 0 ? "CITY TIME PAUSED" : (timeScale === 1 ? "CITY TIME — NORMAL" : "CITY TIME — FAST ×6"), "How fast the day passes");
+      }
+      refreshSettings();
+      sndClick();
+    });
+  });
+  el("set-open-map").addEventListener("click", function () { initAudio(); closeSettings(); setMapUi(true); sndClick(); });
+  el("set-open-profile").addEventListener("click", function () { initAudio(); closeSettings(); openProfile(true); sndClick(); });
+
+  window.addEventListener("keydown", function (e) {
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+    if (!G.started) return;
+    if (e.code === "KeyM") { mapPanel.classList.contains("open") ? closeMap() : openMap(); }
+    else if (e.code === "KeyP") { profPanel.classList.contains("open") ? closeProfile() : openProfile(false); }
+    else if (e.code === "KeyB") { profPanel.classList.contains("open") ? closeProfile() : openProfile(true); }
+    else if (e.code === "Escape") { closeMap(); closeProfile(); closeSettings(); closeSideUis(); }
+  });
+
+  // Live sync: minimap, boost countdown, parcel-in-hand, open panels
+  var sideToggleIds = ["map-toggle", "profile-toggle", "settings-toggle"];
+  setInterval(function () {
+    if (!G.started || G.over) {
+      sideToggleIds.forEach(function (id) { el(id).style.display = "none"; });
+      if (mapUiOpen || profileUiOpen) closeSideUis();
+      if (settingsPanel.classList.contains("open")) closeSettings();
+      return;
+    }
+    sideToggleIds.forEach(function (id) { if (el(id).style.display !== "flex") el(id).style.display = "flex"; });
+    if (G.boostT > 0) G.boostT = Math.max(0, G.boostT - 0.15);
+    if (mapPing.t > 0) mapPing.t -= 0.15;
+    parcelMesh.visible = carryingPackage() && G.mode === "foot" && !G.inside;
+    el("bag-badge").textContent = bagSlots();
+    // Each separate panel only redraws while it is open.
+    if (mapUiOpen) {
+      // Separate MAP panel: the TOTAL map (whole city, labelled)
+      drawMap(el("minimap"), true);
+      el("minimap-loc").innerHTML = "You are at <b>" + zoneName() + "</b>";
+      var tgtTxt = M.target;
+      if (M.active === "race" && raceCpIndex < RACE_CPS.length) tgtTxt = RACE_CPS[raceCpIndex];
+      var tgtEl = el("minimap-target");
+      if (tgtTxt && !G.inside) {
+        var ppT = playerPos();
+        tgtEl.innerHTML = "Target <b>" + Math.round(distTo(tgtTxt.x, tgtTxt.z)) + " m</b> to the <b>" + compass8(tgtTxt.x - ppT.x, tgtTxt.z - ppT.z) + "</b>";
+      } else if (G.inside) tgtEl.textContent = "Inside — your arrow stays on this building's door";
+      else tgtEl.textContent = "No active target — walk to a glowing job marker";
+    }
+    if (profileUiOpen) {
+      // Separate PROFILE panel: the live profile card
+      var dockLvl = G.respect >= 300 ? 3 : (G.respect >= 170 ? 2 : (G.respect >= 70 ? 1 : 0));
+      el("dock-name").textContent = el("prof-name").value || "Beachfront Runner";
+      el("dock-rank").textContent = respectNames[dockLvl] + " · Respect " + G.respect + (G.boostT > 0 ? " · Boost " + Math.ceil(G.boostT) + "s" : "");
+      el("dock-cash").textContent = "$" + G.money;
+      var dockW = Math.round(G.wanted);
+      el("dock-wanted").textContent = dockW > 0 ? "★".repeat(dockW) + " (" + dockW + "/5)" : "Clear";
+      el("dock-mode").textContent = G.inside ? "Inside a building" : (G.mode === "car" && G.drivingVehicle ? "Driving the " + (G.drivingVehicle.kind === "bike" ? "bike" : "car") : "On foot");
+      el("dock-time").textContent = clockEl.textContent;
+      var bl = el("boost-line");
+      if (G.boostT > 0) { bl.style.display = "block"; bl.textContent = "SPEED BOOST — " + Math.ceil(G.boostT) + "s left"; }
+      else bl.style.display = "none";
+    }
+    if (mapPanel.classList.contains("open")) { drawMap(el("bigmap"), true); refreshMapText(); }
+    if (profPanel.classList.contains("open")) refreshProfile();
+    if (settingsPanel.classList.contains("open")) refreshSettings();
+  }, 150);
+
+  // Play Again also restocks what he carries and clears any boost
+  var resetGameOrig = resetGame;
+  resetGame = function () {
+    resetGameOrig();
+    bagItems.forEach(function (it) { if (it.qty != null) it.qty = 2; });
+    G.boostT = 0; mapPing.t = 0;
+    closeMap(); closeProfile(); closeSettings(); closeSideUis();
+  };
+
   // ---------- GitHub Pages panel ----------
   var ghPanel = el("github-panel"), ghFeedback = el("gh-feedback");
-  el("open-github").addEventListener("click", function () { ghPanel.classList.add("open"); ghFeedback.textContent = ""; });
+  var openGithubBtn = el("open-github");
+  if (openGithubBtn) openGithubBtn.addEventListener("click", function () { ghPanel.classList.add("open"); ghFeedback.textContent = ""; });
   el("close-github").addEventListener("click", function () { ghPanel.classList.remove("open"); });
   ghPanel.addEventListener("click", function (e) { if (e.target === ghPanel) ghPanel.classList.remove("open"); });
   el("download-readme").addEventListener("click", function () {

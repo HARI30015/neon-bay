@@ -31,10 +31,13 @@ Once installed, the game opens fullscreen from your home screen / app list.
 
 ## How to play
 
+Start screen shows only the title, a CONTROLS card and START PLAYING.
+
 - WASD move · Shift run · Space jump
 - E enter / exit a car · in a car: WASD drive, Space handbrake
 - E at a glowing building door — go inside · inside, E at the EXIT door — back out
-- C or the CAMERA button — change camera view (Follow, Top, Side, Front, First-person)
+- C or V change camera angle — follow · top · side · front · first-person
+- M map · P profile · B backpack · top-right gear opens Settings
 - On a phone, use the on-screen buttons.
 
 ## What is in the game
@@ -44,4 +47,13 @@ Once installed, the game opens fullscreen from your home screen / app list.
 - All 35 buildings are enterable, with furnished interiors.
 - World Landmarks Park, north of the city: Eiffel Tower, Big Ben, Statue of
   Liberty, Sydney Opera House, Leaning Tower of Pisa, Colosseum, London Eye.
+- The hero's own separate home, east of the city, marked HOME in gold on the
+  map: a modern two-storey white house with a cantilevered warm-lit glass
+  upper box, dark grey tower, huge glass doors and red outdoor sofas, with a
+  black futuristic supercar (cyan Y-shaped lights, glowing orange wheels)
+  parked outside it — press E to drive it.
+- Map and profile are separate: a cyan MAP button opens only the total city
+  map, an amber PROFILE button opens only the profile panel (with FULL PROFILE
+  and BACKPACK). Settings (top-right gear): Sound, Camera, Graphics and City
+  Time speed.
 - Three jobs, cash and respect, police and wanted stars, day-night cycle.
