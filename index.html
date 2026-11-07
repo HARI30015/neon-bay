@@ -662,6 +662,8 @@
     <div class="control-row"><span class="control-keys"><b>Space</b></span><span>Jump · Handbrake in car</span></div>
     <div class="control-row"><span class="control-keys"><b>E</b></span><span>Enter / exit car · Enter building</span></div>
     <div class="control-row"><span class="control-keys"><b>C</b></span><span>Camera — Follow · Top · Side · Front · First-person</span></div>
+    <div class="control-row"><span class="control-keys"><b>Cars</b></span><span>All royal black supercars · C — change car view</span></div>
+    <div class="control-row"><span class="control-keys"><b>Mouse</b></span><span>— move to look around (no click)</span></div>
     <div class="control-row"><span class="control-keys"><b>M</b></span><span>Map</span></div>
     <div class="control-row"><span class="control-keys"><b>P</b></span><span>Profile</span></div>
     <div class="control-row"><span class="control-keys"><b>B</b></span><span>Backpack</span></div>
@@ -2794,90 +2796,127 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     w.add(cap);
     return w;
   }
+  // ---------- Every car is the royal black supercar ----------
+  // One shared builder for the hero car, the traffic cars and the police:
+  // a low, angular, matte carbon-black supercar in the style of the photo —
+  // sculpted panels, a glass canopy over a detailed cabin (seats, steering
+  // wheel, dashboard with glowing screens), Y-shaped cyan LED headlights,
+  // glowing orange-red illuminated wheels, red accent lines, front
+  // splitter, side air intakes, rear diffuser and the little "63" badge.
+  var badgeTexCache = null;
+  function badgeTexture() {
+    if (badgeTexCache) return badgeTexCache;
+    var bc = document.createElement("canvas"); bc.width = 128; bc.height = 80;
+    var bg2 = bc.getContext("2d"); bg2.fillStyle = "#101114"; bg2.fillRect(0, 0, 128, 80);
+    bg2.fillStyle = "#f2f2ee"; bg2.font = "900 52px Arial"; bg2.textAlign = "center"; bg2.fillText("63", 64, 58);
+    badgeTexCache = new THREE.CanvasTexture(bc); badgeTexCache.colorSpace = THREE.SRGBColorSpace;
+    return badgeTexCache;
+  }
   function buildCar(color, opts) {
     opts = opts || {};
-    var L = opts.len || 4.35;
+    var L = opts.len || 4.8;
     var g = new THREE.Group();
-    // Real car paint: glossy but not mirror-chrome, over a shaped body —
-    // bonnet, cabin with pillars, bumpers, grille, plates, mirrors, exhaust.
-    var paint = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.35 });
-    var glass = new THREE.MeshStandardMaterial({ color: 0x1b2a38, roughness: 0.06, metalness: 0.55 });
-    var plastic = mat(0x232529, 0.75, 0.1);
-    var chrome = mat(0xd8dde6, 0.2, 0.95);
-    var suv = opts.type === "suv";
-    var bodyH = suv ? 0.62 : 0.52, bodyY = suv ? 0.62 : 0.56;
-    g.add(box(1.82, bodyH, L * 0.99, paint, 0, bodyY, 0));                        // main body
-    var hood = box(1.68, 0.13, L * 0.27, paint, 0, bodyY + bodyH / 2 + 0.03, L * 0.335);
-    hood.rotation.x = -0.055; g.add(hood);                                     // sloping bonnet
-    g.add(box(1.7, 0.1, L * 0.2, paint, 0, bodyY + bodyH / 2 + 0.01, -L * 0.38)); // boot lid
-    g.add(box(1.86, 0.2, 0.24, plastic, 0, 0.34, L / 2 + 0.02));               // front bumper
-    g.add(box(1.86, 0.2, 0.24, plastic, 0, 0.34, -L / 2 - 0.02));              // rear bumper
-    g.add(box(1.84, 0.09, L * 0.9, plastic, 0, 0.24, 0, false));               // side skirts
-    g.add(box(0.85, 0.16, 0.05, plastic, 0, 0.52, L / 2 + 0.13));              // grille
-    g.add(box(0.85, 0.03, 0.055, chrome, 0, 0.6, L / 2 + 0.13, false));
-    // cabin: glasshouse with painted pillars and roof
-    var cabH = suv ? 0.62 : 0.5, cabY = bodyY + bodyH / 2 + cabH / 2 - 0.02, cabL = L * (suv ? 0.52 : 0.46);
-    g.add(box(1.6, cabH, cabL, glass, 0, cabY, -L * 0.04));
-    g.add(box(1.66, 0.07, cabL * 0.96, paint, 0, cabY + cabH / 2 + 0.03, -L * 0.04)); // roof
-    [[-0.79, 1], [0.79, 1], [-0.79, -1], [0.79, -1]].forEach(function (pp) {
-      g.add(box(0.06, cabH, 0.07, paint, pp[0], cabY, -L * 0.04 + pp[1] * cabL / 2, false)); // pillars
-    });
-    g.add(box(0.05, cabH * 0.92, 0.05, paint, -0.79, cabY, -L * 0.04, false));  // B-pillars
-    g.add(box(0.05, cabH * 0.92, 0.05, paint, 0.79, cabY, -L * 0.04, false));
-    // door seams + handles, both sides
-    [-0.915, 0.915].forEach(function (sx) {
-      g.add(box(0.012, bodyH * 0.8, 0.02, plastic, sx, bodyY, L * 0.06, false));
-      g.add(box(0.012, bodyH * 0.8, 0.02, plastic, sx, bodyY, -L * 0.18, false));
-      g.add(box(0.02, 0.045, 0.3, chrome, sx, bodyY + 0.14, L * 0.14, false));
-      g.add(box(0.02, 0.045, 0.3, chrome, sx, bodyY + 0.14, -L * 0.1, false));
-    });
-    // wing mirrors on stalks
+    var paint = new THREE.MeshStandardMaterial({ color: 0x141519, roughness: 0.46, metalness: 0.4 });
+    var paintHi = new THREE.MeshStandardMaterial({ color: 0x202228, roughness: 0.32, metalness: 0.55 });
+    var carbon = mat(0x0a0a0c, 0.42, 0.5);
+    var glassM = new THREE.MeshStandardMaterial({ color: 0x111820, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.55 });
+    var leather = mat(0x17130f, 0.85, 0.05);
+    var dashM = mat(0x101114, 0.6, 0.3);
+    var redGlow = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 0.9 });
+    // --- low, wide, angular body ---
+    g.add(box(2.04, 0.52, L * 0.98, paint, 0, 0.5, 0));                        // main body
+    var nose = box(1.92, 0.3, 1.35, paint, 0, 0.56, L * 0.36); nose.rotation.x = 0.09; g.add(nose); // wedge nose
+    g.add(box(1.66, 0.13, L * 0.3, paintHi, 0, 0.83, L * 0.3));                // sculpted bonnet panel
+    g.add(box(2.08, 0.1, 0.55, carbon, 0, 0.2, L / 2 + 0.05));                 // front splitter
+    g.add(box(1.7, 0.16, 0.9, carbon, 0, 0.34, L * 0.3, false));               // nose intake
+    g.add(box(1.86, 0.24, 1.15, paint, 0, 0.72, -L * 0.36));                   // rear deck
+    g.add(box(0.09, 0.3, 0.75, carbon, 0, 0.98, -L * 0.42, false));            // rear fin
+    g.add(box(1.72, 0.045, 0.3, carbon, 0, 0.87, -L * 0.455, false));          // rear spoiler lip
+    g.add(box(1.8, 0.13, 0.5, carbon, 0, 0.17, -L / 2 + 0.08));                // rear diffuser
+    for (var df = -3; df <= 3; df++) g.add(box(0.04, 0.16, 0.42, carbon, df * 0.24, 0.17, -L / 2 + 0.08, false)); // diffuser fins
     [-1, 1].forEach(function (sd) {
-      g.add(box(0.16, 0.03, 0.03, paint, sd * 0.93, cabY - 0.05, L * 0.17, false));
-      g.add(box(0.05, 0.11, 0.17, paint, sd * 1.0, cabY - 0.02, L * 0.17, false));
+      g.add(box(0.07, 0.42, 1.15, carbon, sd * 1.0, 0.56, -L * 0.16, false));  // side air intakes
+      g.add(box(0.03, 0.035, 1.5, redGlow, sd * 1.03, 0.4, -L * 0.2, false));  // red side accent line
+      var exh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.2, 8).rotateX(Math.PI / 2), mat(0x3a3d42, 0.3, 0.8));
+      exh.position.set(sd * 0.55, 0.3, -L / 2 - 0.04); g.add(exh);             // exhaust tips
+      g.add(box(0.14, 0.03, 0.03, paint, sd * 0.98, 1.0, L * 0.13, false));    // mirror stalks
+      g.add(box(0.05, 0.1, 0.16, carbon, sd * 1.06, 1.02, L * 0.13, false));   // wing mirrors
     });
-    if (opts.spoiler) {
-      g.add(box(1.6, 0.05, 0.3, mat(0x17181c, 0.4, 0.4), 0, 1.06, -L / 2 + 0.18, false));
-      g.add(box(0.07, 0.22, 0.07, plastic, -0.55, 0.94, -L / 2 + 0.18, false));
-      g.add(box(0.07, 0.22, 0.07, plastic, 0.55, 0.94, -L / 2 + 0.18, false));
-    }
+    // --- glass canopy over a detailed cabin ---
+    g.add(box(1.52, 0.5, 2.3, glassM, 0, 0.94, -L * 0.04));                    // tinted glass canopy
+    g.add(box(1.34, 0.06, 1.5, carbon, 0, 1.21, -L * 0.06));                   // carbon roof panel
+    g.add(box(1.46, 0.05, 2.1, leather, 0, 0.79, -0.15, false));               // cabin floor
+    var dash = box(1.46, 0.2, 0.3, dashM, 0, 0.99, 0.74); dash.rotation.x = 0.15; g.add(dash); // dashboard
+    var screenM = new THREE.MeshStandardMaterial({ color: 0x0b2b33, emissive: 0x19d3e6, emissiveIntensity: 0.9 });
+    g.add(box(0.36, 0.13, 0.02, screenM, 0.02, 1.04, 0.57, false));            // centre dash screen
+    g.add(box(0.2, 0.08, 0.02, screenM, 0.44, 1.05, 0.58, false));             // driver display
+    g.add(box(0.3, 0.15, 0.95, leather, 0, 0.86, 0.02, false));                // centre console
+    // steering wheel (driver's side) — it turns with the steering
+    var steerWheel = new THREE.Group();
+    steerWheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.028, 10, 24), dashM));
+    steerWheel.add(box(0.3, 0.045, 0.03, dashM, 0, 0, 0, false));
+    steerWheel.add(box(0.045, 0.3, 0.03, dashM, 0, 0, 0, false));
+    var hub = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.05, 10).rotateX(Math.PI / 2), carbon);
+    steerWheel.add(hub);
+    steerWheel.position.set(0.42, 0.97, 0.47);
+    steerWheel.rotation.x = -0.35;
+    g.add(steerWheel);
+    var column = box(0.06, 0.06, 0.3, dashM, 0.42, 0.93, 0.6, false); column.rotation.x = 0.5; g.add(column);
+    // two sculpted seats with a red accent line
+    [-0.42, 0.42].forEach(function (sx) {
+      g.add(box(0.54, 0.13, 0.52, leather, sx, 0.85, -0.28, false));           // seat base
+      var back = box(0.54, 0.36, 0.13, leather, sx, 0.99, -0.55, false); back.rotation.x = -0.14; g.add(back); // seat back
+      g.add(box(0.54, 0.035, 0.02, redGlow, sx, 1.1, -0.6, false));            // red seat accent
+    });
+    g.add(box(0.5, 0.05, 0.02, dashM, 0, 1.14, 0.3, false));                    // rear-view mirror
+    // --- Y-shaped cyan LED headlights + full-width rear light bar ---
+    var led = new THREE.MeshStandardMaterial({ color: 0xdffcff, emissive: 0xaef4ff, emissiveIntensity: 2.0 });
+    var ledDot = new THREE.MeshStandardMaterial({ color: 0xbffbff, emissive: 0x19d3e6, emissiveIntensity: 2.4 });
+    [-1, 1].forEach(function (sd) {
+      g.add(box(0.55, 0.045, 0.05, led, sd * 0.58, 0.64, L / 2 + 0.1, false));
+      var diag = box(0.05, 0.42, 0.05, led, sd * 0.82, 0.52, L / 2 + 0.1, false); diag.rotation.z = sd * 0.65; g.add(diag);
+      g.add(box(0.09, 0.05, 0.05, ledDot, sd * 0.34, 0.7, L / 2 + 0.1, false));
+    });
+    var tlS = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 1.1 });
+    g.add(box(1.55, 0.05, 0.05, tlS, 0, 0.68, -L / 2 - 0.06, false));          // rear light bar
+    // "63" badge plate at the rear, like the reference car
+    var plate = box(0.44, 0.28, 0.04, carbon, 0.55, 0.98, -L * 0.44, false); plate.rotation.x = -0.18; g.add(plate);
+    var badge = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25), new THREE.MeshBasicMaterial({ map: badgeTexture() }));
+    badge.position.set(0.55, 0.99, -L * 0.44 - 0.035); badge.rotation.y = Math.PI; badge.rotation.x = -0.18; g.add(badge);
     if (opts.type === "taxi") {
-      g.add(box(0.62, 0.17, 0.3, mat(0xf5f2e8, 0.4, 0.05, 0xffc93d, 0.55), 0, cabY + cabH / 2 + 0.16, -L * 0.04, false)); // TAXI roof sign
+      g.add(box(0.52, 0.15, 0.28, mat(0xf5f2e8, 0.4, 0.05, 0xffc93d, 0.6), 0, 1.32, -L * 0.06, false)); // TAXI roof sign
     }
-    // lights: LED-style headlamps, full-width rear light bar, indicators
-    var hl = new THREE.MeshStandardMaterial({ color: 0xf4f7ff, emissive: 0xdfeaff, emissiveIntensity: 0.35 });
-    var tl = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xd21f30, emissiveIntensity: 0.4 });
-    var ind = mat(0xd88a20, 0.4, 0.1, 0xff9a1f, 0.25);
-    g.add(box(0.42, 0.11, 0.05, hl, -0.6, 0.68, L / 2 + 0.06));
-    g.add(box(0.42, 0.11, 0.05, hl, 0.6, 0.68, L / 2 + 0.06));
-    g.add(box(0.16, 0.07, 0.05, ind, -0.85, 0.68, L / 2 + 0.06, false));
-    g.add(box(0.16, 0.07, 0.05, ind, 0.85, 0.68, L / 2 + 0.06, false));
-    g.add(box(1.5, 0.09, 0.05, tl, 0, 0.74, -L / 2 - 0.06));
-    // number plates + exhaust
-    var plateM = mat(0xf2f2ee, 0.5, 0);
-    g.add(box(0.52, 0.13, 0.02, plateM, 0, 0.42, L / 2 + 0.15, false));
-    g.add(box(0.52, 0.13, 0.02, plateM, 0, 0.48, -L / 2 - 0.15, false));
-    var exh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.22, 8).rotateX(Math.PI / 2), chrome);
-    exh.position.set(0.62, 0.22, -L / 2 - 0.12); g.add(exh);
-    // dark wheel-arch backing so the wheels sit in real arches
-    var archM = mat(0x0c0d0f, 0.95, 0);
+    // --- glowing orange-red illuminated wheels (front pair first) ---
+    function glowWheel() {
+      var w = new THREE.Group();
+      var tire = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.3, 20).rotateZ(Math.PI / 2), mat(0x0c0c0e, 0.9, 0));
+      tire.castShadow = true; w.add(tire);
+      var rimM = new THREE.MeshStandardMaterial({ color: 0x1c0d06, emissive: 0xff4d12, emissiveIntensity: 1.5, roughness: 0.4, metalness: 0.3 });
+      var rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.31, 18).rotateZ(Math.PI / 2), rimM); w.add(rim);
+      w.add(box(0.32, 0.08, 0.44, rimM, 0, 0, 0, false));
+      w.add(box(0.32, 0.44, 0.08, rimM, 0, 0, 0, false));
+      var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.33, 10).rotateZ(Math.PI / 2), mat(0x0a0a0c, 0.4, 0.5));
+      w.add(cap);
+      return w;
+    }
     var wheels = [];
-    var wx = 0.86, wz = L / 2 - 0.92;
-    [[-wx, wz], [wx, wz], [-wx, -wz], [wx, -wz]].forEach(function (p) {
-      var arch = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.1, 14).rotateZ(Math.PI / 2), archM);
-      arch.position.set(p[0] * 1.02, 0.37, p[1]); g.add(arch);
-      var w = makeWheel(); w.position.set(p[0], 0.37, p[1]); g.add(w); wheels.push(w);
+    var archM = mat(0x060607, 0.95, 0);
+    var wz = L / 2 - 0.9;
+    [[-0.9, wz], [0.9, wz], [-0.9, -wz], [0.9, -wz]].forEach(function (p) {
+      var arch = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.1, 14).rotateZ(Math.PI / 2), archM);
+      arch.position.set(p[0] * 1.03, 0.41, p[1]); g.add(arch);
+      var w = glowWheel(); w.position.set(p[0], 0.41, p[1]); g.add(w); wheels.push(w);
     });
     var beam = null;
     if (opts.beam) {
-      beam = new THREE.SpotLight(0xffe9a0, 0, 30, 0.5, 0.6);
-      beam.position.set(0, 0.7, L / 2);
-      var beamTarget = new THREE.Object3D(); beamTarget.position.set(0, 0, L / 2 + 14);
-      g.add(beamTarget); beam.target = beamTarget; g.add(beam);
+      beam = new THREE.SpotLight(0xdff4ff, 0, 32, 0.5, 0.6);
+      beam.position.set(0, 0.65, L / 2);
+      var bt = new THREE.Object3D(); bt.position.set(0, 0, L / 2 + 14); g.add(bt); beam.target = bt; g.add(beam);
     }
-    g.userData = { wheels: wheels, beam: beam, hl: hl, tl: tl, kind: "car", radius: 1.6, len: L };
+    g.userData = { wheels: wheels, beam: beam, hl: led, tl: tlS, steerWheel: steerWheel, kind: "car", radius: 1.7, len: L };
     return g;
   }
+
   function buildBike(color) {
     var g = new THREE.Group();
     var paint = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3, metalness: 0.4 });
@@ -2926,7 +2965,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     };
     return v;
   }
-  var playerCar = makeVehicle(buildCar, 0xc22430, 4, 57, Math.PI, { beam: true, spoiler: true }); // cherry-red hero car, real metallic paint
+  var playerCar = makeVehicle(buildCar, 0x141519, 4, 57, Math.PI, { beam: true }); // hero car — royal matte-black supercar
   var playerBike = makeVehicle(buildBike, 0x2456a6, -8, 52, Math.PI * 0.9); // deep blue bike
   var playerVehicles = [playerCar, playerBike];
 
@@ -2935,68 +2974,12 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // low angular body, Y-shaped cyan LED headlights, glowing orange-red
   // illuminated wheels, red accents and the little "63" badge at the rear.
   function buildSuperCar() {
-    var g = new THREE.Group();
-    var paint = new THREE.MeshStandardMaterial({ color: 0x141519, roughness: 0.52, metalness: 0.35 });
-    var carbon = mat(0x0a0a0c, 0.4, 0.5);
-    var canopy = new THREE.MeshStandardMaterial({ color: 0x0d1218, roughness: 0.05, metalness: 0.6 });
-    var L = 4.8;
-    g.add(box(2.04, 0.52, L * 0.98, paint, 0, 0.5, 0));                        // low, wide body
-    var nose = box(1.92, 0.3, 1.35, paint, 0, 0.56, L * 0.36); nose.rotation.x = 0.09; g.add(nose); // wedge nose
-    g.add(box(2.08, 0.1, 0.55, carbon, 0, 0.2, L / 2 + 0.05));                // front splitter
-    g.add(box(1.7, 0.16, 0.9, carbon, 0, 0.34, L * 0.3, false));              // nose intake
-    g.add(box(1.52, 0.44, 2.25, canopy, 0, 0.88, -L * 0.05));                 // glass canopy
-    g.add(box(1.34, 0.07, 1.5, carbon, 0, 1.12, -L * 0.08));                  // carbon roof panel
-    var redGlow = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 0.9 });
-    [-1, 1].forEach(function (sd) {
-      g.add(box(0.07, 0.42, 1.15, carbon, sd * 1.0, 0.56, -L * 0.16, false)); // side air intakes
-      g.add(box(0.03, 0.035, 1.5, redGlow, sd * 1.03, 0.4, -L * 0.2, false)); // red side accent line
-    });
-    g.add(box(1.86, 0.24, 1.15, paint, 0, 0.72, -L * 0.36));                  // rear deck
-    g.add(box(0.09, 0.3, 0.75, carbon, 0, 0.98, -L * 0.42, false));           // rear fin
-    // Y-shaped LED headlights, cyan-white
-    var led = new THREE.MeshStandardMaterial({ color: 0xdffcff, emissive: 0xaef4ff, emissiveIntensity: 2.0 });
-    var ledDot = new THREE.MeshStandardMaterial({ color: 0xbffbff, emissive: 0x19d3e6, emissiveIntensity: 2.4 });
-    [-1, 1].forEach(function (sd) {
-      g.add(box(0.55, 0.045, 0.05, led, sd * 0.58, 0.64, L / 2 + 0.1, false));
-      var diag = box(0.05, 0.42, 0.05, led, sd * 0.82, 0.52, L / 2 + 0.1, false); diag.rotation.z = sd * 0.65; g.add(diag);
-      g.add(box(0.09, 0.05, 0.05, ledDot, sd * 0.34, 0.7, L / 2 + 0.1, false));
-    });
-    var tlS = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 1.1 });
-    g.add(box(1.55, 0.05, 0.05, tlS, 0, 0.68, -L / 2 - 0.06, false));         // full-width rear light bar
-    // "63" badge plate at the rear, like the reference car
-    var bc = document.createElement("canvas"); bc.width = 128; bc.height = 80;
-    var bg2 = bc.getContext("2d"); bg2.fillStyle = "#101114"; bg2.fillRect(0, 0, 128, 80);
-    bg2.fillStyle = "#f2f2ee"; bg2.font = "900 52px Arial"; bg2.textAlign = "center"; bg2.fillText("63", 64, 58);
-    var btex = new THREE.CanvasTexture(bc); btex.colorSpace = THREE.SRGBColorSpace;
-    var plate = box(0.44, 0.28, 0.04, carbon, 0.55, 0.98, -L * 0.44, false); plate.rotation.x = -0.18; g.add(plate);
-    var badge = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25), new THREE.MeshBasicMaterial({ map: btex }));
-    badge.position.set(0.55, 0.99, -L * 0.44 - 0.035); badge.rotation.y = Math.PI; badge.rotation.x = -0.18; g.add(badge);
-    // glowing orange-red illuminated wheels
-    function glowWheel() {
-      var w = new THREE.Group();
-      var tire = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.3, 20).rotateZ(Math.PI / 2), mat(0x0c0c0e, 0.9, 0));
-      tire.castShadow = true; w.add(tire);
-      var rimM = new THREE.MeshStandardMaterial({ color: 0x1c0d06, emissive: 0xff4d12, emissiveIntensity: 1.5, roughness: 0.4, metalness: 0.3 });
-      var rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.31, 18).rotateZ(Math.PI / 2), rimM); w.add(rim);
-      w.add(box(0.32, 0.08, 0.44, rimM, 0, 0, 0, false));
-      w.add(box(0.32, 0.44, 0.08, rimM, 0, 0, 0, false));
-      var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.33, 10).rotateZ(Math.PI / 2), mat(0x0a0a0c, 0.4, 0.5));
-      w.add(cap);
-      return w;
-    }
-    var wheels = [];
-    var archM = mat(0x060607, 0.95, 0);
-    [[-0.9, 1.5], [0.9, 1.5], [-0.9, -1.5], [0.9, -1.5]].forEach(function (p) {
-      var arch = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.1, 14).rotateZ(Math.PI / 2), archM);
-      arch.position.set(p[0] * 1.03, 0.41, p[1]); g.add(arch);
-      var w = glowWheel(); w.position.set(p[0], 0.41, p[1]); g.add(w); wheels.push(w);
-    });
-    var beam = new THREE.SpotLight(0xdff4ff, 0, 32, 0.5, 0.6);
-    beam.position.set(0, 0.65, L / 2);
-    var bt = new THREE.Object3D(); bt.position.set(0, 0, L / 2 + 14); g.add(bt); beam.target = bt; g.add(beam);
-    g.userData = { wheels: wheels, beam: beam, hl: led, tl: tlS, kind: "car", radius: 1.7, len: L };
-    return g;
+    // The hero's home car is the same royal supercar build as every other
+    // car — matte black, Y-lights, glowing wheels, "63" badge — with its
+    // headlight beam fitted; it stays the fastest car in the game.
+    return buildCar(0x141519, { beam: true });
   }
+
   var homeCar = makeVehicle(buildSuperCar, 0x141519, HOME_X, HOME_Z + 13.6, Math.PI + 0.1, { beam: true });
   homeCar.topSpeed = 41; homeCar.accel = 20;
   playerVehicles.push(homeCar);
@@ -3010,7 +2993,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     for (var i = 0; i < 12; i++) {
       var vertical = Math.random() < 0.55;
       var mesh;
-      if (i === 3) mesh = buildCar(0xf2b21b, { type: "taxi" });              // yellow cab
+      if (i === 3) mesh = buildCar(0x141519, { type: "taxi" });              // the cab — black supercar with a TAXI sign
       else if (i % 4 === 1) mesh = buildCar(trafficColors[i % trafficColors.length], { type: "suv", len: 4.6 });
       else mesh = buildCar(trafficColors[i % trafficColors.length], {});
       scene.add(mesh);
@@ -3036,17 +3019,17 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   function buildCopCar() {
     var g = buildCar(0xf4f5f6, {});
     // realistic police livery: dark band along the sides, light bar on the roof
-    g.add(box(1.87, 0.3, 2.1, mat(0x1d2f4a, 0.45, 0.25), 0, 0.56, -0.05));
-    g.add(box(1.87, 0.07, 2.1, mat(0xd8a92c, 0.4, 0.3), 0, 0.75, -0.05, false)); // reflective stripe
-    var barBase = box(1.05, 0.07, 0.3, mat(0x24262a, 0.5, 0.3), 0, 1.42, -0.2, false);
+    g.add(box(2.07, 0.26, 2.3, mat(0x1d2f4a, 0.45, 0.25), 0, 0.52, -0.05));
+    g.add(box(2.07, 0.07, 2.3, mat(0xd8a92c, 0.4, 0.3), 0, 0.68, -0.05, false)); // reflective stripe
+    var barBase = box(1.05, 0.07, 0.3, mat(0x24262a, 0.5, 0.3), 0, 1.3, -0.2, false);
     g.add(barBase);
     var barMatR = new THREE.MeshStandardMaterial({ color: 0xff2233, emissive: 0xff2233, emissiveIntensity: 1.4 });
     var barMatB = new THREE.MeshStandardMaterial({ color: 0x2266ff, emissive: 0x2266ff, emissiveIntensity: 1.4 });
-    var bR = box(0.48, 0.13, 0.26, barMatR, -0.26, 1.52, -0.2, false);
-    var bB = box(0.48, 0.13, 0.26, barMatB, 0.26, 1.52, -0.2, false);
+    var bR = box(0.48, 0.13, 0.26, barMatR, -0.26, 1.4, -0.2, false);
+    var bB = box(0.48, 0.13, 0.26, barMatB, 0.26, 1.4, -0.2, false);
     g.add(bR, bB);
     var siren = new THREE.PointLight(0xff3344, 0, 22);
-    siren.position.set(0, 1.8, -0.2);
+    siren.position.set(0, 1.66, -0.2);
     g.add(siren);
     g.userData.barR = barMatR; g.userData.barB = barMatB; g.userData.siren = siren;
     return g;
@@ -3991,17 +3974,42 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var keys = {};
   var touchState = { fwd: false, back: false, left: false, right: false };
   var camYaw = 0, camPitch = 0.32, dragging = false, lastPX = 0, lastPY = 0;
+  // Mouse-look (no click, no drag, no pointer lock): plain mouse movement
+  // over the game canvas feeds pending yaw/pitch deltas, which the camera
+  // update drains a smooth fraction of each frame — so the view glides
+  // instead of jumping. Only the Follow and First-person views use it;
+  // the fixed Top / Side / Front views keep their angles untouched.
+  var pendLookYaw = 0, pendLookPitch = 0, lastMX = null, lastMY = null, mouseHoldT = 0;
+  var LOOK_YAW_SENS = 0.003, LOOK_PITCH_SENS = 0.0023;
   // Camera angles: 0 follow (behind) · 1 top-down · 2 side · 3 front ·
   // 4 first-person (through the hero's / driver's eyes)
   var CAM_VIEWS = ["Follow view", "Top view", "Side view", "Front view", "First-person view"];
   var camView = 0;
+  // While driving a car, C / V / CAMERA cycle a separate set of car views:
+  // chase, from the driver's seat, beside the driver's door, over the
+  // bonnet, from the rear deck, and top-down. On foot (and on the bike)
+  // the five views above stay exactly as they were.
+  var CAR_VIEWS = ["Follow view", "Inside car view", "Door view", "Hood view", "Rear view", "Top view"];
+  var carView = 0;
+  function drivingCarView() {
+    return G.mode === "car" && G.drivingVehicle && G.drivingVehicle.kind === "car";
+  }
+  function refreshViewLabel() {
+    el("view-name").textContent = drivingCarView() ? CAR_VIEWS[carView] : CAM_VIEWS[camView];
+  }
   var camSnap = false;   // set on every view switch: camera jumps straight to the new angle
   function cycleCameraView() {
     if (!G.started || G.over) return;
-    camView = (camView + 1) % CAM_VIEWS.length;
     camSnap = true;
-    el("view-name").textContent = CAM_VIEWS[camView];
-    toast(CAM_VIEWS[camView].toUpperCase(), "Press C or tap CAMERA to change angle");
+    if (drivingCarView()) {
+      carView = (carView + 1) % CAR_VIEWS.length;
+      el("view-name").textContent = CAR_VIEWS[carView];
+      toast(CAR_VIEWS[carView].toUpperCase(), "Press C or tap CAMERA to change car view");
+    } else {
+      camView = (camView + 1) % CAM_VIEWS.length;
+      el("view-name").textContent = CAM_VIEWS[camView];
+      toast(CAM_VIEWS[camView].toUpperCase(), "Press C or tap CAMERA to change angle");
+    }
     sndClick();
   }
   function setCamView(i) {
@@ -4047,6 +4055,27 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     lastPX = e.clientX; lastPY = e.clientY;
   });
   window.addEventListener("pointerup", function () { dragging = false; });
+  // Mouse-look by movement alone: moving the mouse over the canvas turns
+  // the view left/right and tilts it up/down a little. No button is ever
+  // pressed, nothing gets clicked, and the player does not move — only
+  // the camera. While dragging (the old orbit) this stays out of the way,
+  // and in the fixed Top / Side / Front views it does nothing at all.
+  // Panels sit above the canvas, so moving over a panel never reaches
+  // this listener and never turns the view either.
+  canvas.addEventListener("mousemove", function (e) {
+    if (!G.started || G.over) { lastMX = null; lastMY = null; return; }
+    var lookOK = drivingCarView() ? (carView === 0 || carView === 1) : (camView === 0 || camView === 4);
+    if (dragging || !lookOK) { lastMX = e.clientX; lastMY = e.clientY; return; }
+    if (lastMX === null) { lastMX = e.clientX; lastMY = e.clientY; return; }
+    var dx = clamp(e.clientX - lastMX, -60, 60);
+    var dy = clamp(e.clientY - lastMY, -60, 60);
+    lastMX = e.clientX; lastMY = e.clientY;
+    if (dx === 0 && dy === 0) return;
+    pendLookYaw += dx * LOOK_YAW_SENS;
+    pendLookPitch += dy * LOOK_PITCH_SENS;
+    mouseHoldT = 2.5;   // a driven car's camera waits a moment before easing back behind the car
+  });
+  canvas.addEventListener("mouseleave", function () { lastMX = null; lastMY = null; });
   canvas.addEventListener("touchstart", function (e) { e.preventDefault(); }, { passive: false });
   canvas.addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
 
@@ -4092,6 +4121,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     if (G.mode === "car") {
       var v = G.drivingVehicle;
       G.mode = "foot"; G.drivingVehicle = null;
+      refreshViewLabel();
       hero.visible = true;
       var side = v.heading + Math.PI / 2;
       heroState.pos.set(
@@ -4114,6 +4144,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       });
       if (best) {
         G.mode = "car"; G.drivingVehicle = best;
+        camSnap = true;
+        refreshViewLabel();
         hero.visible = false;
         speedoEl.style.display = "block";
         sndClick();
@@ -4336,6 +4368,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       w.rotation.x += spin;
       if (i < 2) w.rotation.y = v.steerVis * 0.9;
     });
+    if (v.mesh.userData.steerWheel) v.mesh.userData.steerWheel.rotation.z = -v.steerVis * 2.4;
     vehicleCollide(v, dt);
     // audio
     if (isPlayer && AC) {
@@ -4512,14 +4545,56 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     // Every angle works indoors too, at room-safe distances (below); the
     // interior bounds clamp afterwards keeps the camera inside the room.
     // (Forcing follow view indoors made C / CAMERA change only the label.)
-    var view = camView;
+    var carMode = !!(isCar && v.kind === "car");
+    var view = carMode ? carView : camView;
     var snapNow = camSnap; camSnap = false;
+    // Mouse-look: drain the pending movement deltas smoothly (a fraction
+    // each frame), only in the views that use them. Pitch stays inside
+    // the same clamp as the drag orbit, so the view can tilt but can
+    // never flip upside down.
+    if (carMode ? (view === 0 || view === 1) : (view === 0 || view === 4)) {
+      var smL = reducedMotion ? 1 : 1 - Math.pow(0.000005, dt);
+      if (pendLookYaw !== 0) {
+        var ayL = pendLookYaw * smL;
+        camYaw -= ayL; pendLookYaw -= ayL;
+        if (Math.abs(pendLookYaw) < 0.00005) pendLookYaw = 0;
+      }
+      if (pendLookPitch !== 0) {
+        var apL = pendLookPitch * smL;
+        var npL = clamp(camPitch + apL, 0.08, 1.1);
+        if (npL === camPitch) pendLookPitch = 0;
+        else { camPitch = npL; pendLookPitch -= apL; if (Math.abs(pendLookPitch) < 0.00005) pendLookPitch = 0; }
+      }
+    } else { pendLookYaw = 0; pendLookPitch = 0; }
+    if (mouseHoldT > 0) mouseHoldT = Math.max(0, mouseHoldT - dt);
     // in first-person on foot the hero's own body would block the view
     if (!isCar) hero.visible = view !== 4;
     var fx = Math.sin(heading), fz = Math.cos(heading);   // facing direction
     var rx = Math.cos(heading), rz = -Math.sin(heading);  // right-hand side
     var tx, ty, tz, lx, ly, lz, snap = false;
-    if (view === 1) {            // TOP view — straight down, map-style
+    if (carMode && view === 1) {   // INSIDE CAR — from the driver's seat
+      snap = true;
+      // Mouse-look turns the driver's head, same feel as first-person on
+      // foot: on the switch frame the eyes first line up with the road.
+      if (snapNow) { camYaw = heading + Math.PI; pendLookYaw = 0; camPitch = 0.32; pendLookPitch = 0; }
+      var ifx = -Math.sin(camYaw), ifz = -Math.cos(camYaw);   // view forward from the mouse yaw
+      tx = focus.x + rx * 0.42 + fx * 0.28; ty = focusY + 1.06; tz = focus.z + rz * 0.42 + fz * 0.28;
+      var iPitch = (0.32 - camPitch) * 3;
+      lx = tx + ifx * 10; ly = ty + iPitch; lz = tz + ifz * 10;
+    } else if (carMode && view === 2) {   // DOOR view — beside the driver's door, full side of the car
+      tx = focus.x + rx * 6.4 + fx * 0.3; tz = focus.z + rz * 6.4 + fz * 0.3; ty = focusY + 1.05;
+      lx = focus.x; ly = focusY + 0.6; lz = focus.z;
+    } else if (carMode && view === 3) {   // HOOD view — over the front bonnet
+      snap = true;
+      var hLen = v.mesh.userData.len || 4.8;
+      tx = focus.x + fx * hLen * 0.3; tz = focus.z + fz * hLen * 0.3; ty = focusY + 0.84;
+      lx = focus.x + fx * (hLen * 0.3 + 12); ly = focusY + 0.5; lz = focus.z + fz * (hLen * 0.3 + 12);
+    } else if (carMode && view === 4) {   // REAR view — from the rear deck, looking forward over the car
+      snap = true;
+      var rLen = v.mesh.userData.len || 4.8;
+      tx = focus.x - fx * rLen * 0.34; tz = focus.z - fz * rLen * 0.34; ty = focusY + 1.02;
+      lx = focus.x + fx * 12; ly = focusY + 0.45; lz = focus.z + fz * 12;
+    } else if (view === 1 || (carMode && view === 5)) {            // TOP view — straight down, map-style
       var topH = isCar ? 38 : 30;
       if (G.inside) topH = Math.max(2.4, G.insideCeil - 0.35 - focusY);  // just under the ceiling
       tx = focus.x; tz = focus.z + 0.6; ty = focusY + topH;
@@ -4534,15 +4609,22 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       lx = focus.x; ly = focusY + 1.45; lz = focus.z;
     } else if (view === 4) {     // FIRST-PERSON — through the eyes
       snap = true;
+      // Mouse-look turns the eyes: the view direction comes from camYaw
+      // (what the mouse turns), not from the body heading, so you can
+      // look around while standing still. On the frame the view is
+      // switched to, camYaw first lines up with where the hero / car
+      // already faces, so entering first-person never jumps.
+      if (snapNow) { camYaw = heading + Math.PI; pendLookYaw = 0; }
       var eyeY = focusY + (isCar ? 1.12 : 1.68);
       var fwdOff = isCar ? 0.1 : 0.22, sideOff = isCar ? -0.35 : 0;
-      tx = focus.x + fx * fwdOff + rx * sideOff; ty = eyeY; tz = focus.z + fz * fwdOff + rz * sideOff;
+      var lfx = -Math.sin(camYaw), lfz = -Math.cos(camYaw);   // view forward from the mouse yaw
+      tx = focus.x + lfx * fwdOff + rx * sideOff; ty = eyeY; tz = focus.z + lfz * fwdOff + rz * sideOff;
       var lookPitch = (0.32 - camPitch) * 3;
-      lx = tx + fx * 10; ly = eyeY + lookPitch; lz = tz + fz * 10;
+      lx = tx + lfx * 10; ly = eyeY + lookPitch; lz = tz + lfz * 10;
     } else {                     // FOLLOW view — behind, drag to orbit
       var back, height;
       if (isCar) {
-        if (!dragging && !reducedMotion) camYaw = angLerp(camYaw, v.heading + Math.PI, 1 - Math.pow(0.02, dt));
+        if (!dragging && mouseHoldT <= 0 && Math.abs(pendLookYaw) < 0.001 && !reducedMotion) camYaw = angLerp(camYaw, v.heading + Math.PI, 1 - Math.pow(0.02, dt));
         back = 8.6 + Math.abs(v.speed) * 0.1;
         height = 3.6;
       } else if (G.inside) { back = 4.6; height = 2.1; }
@@ -4556,7 +4638,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     // from the hero to the wanted spot when a facade blocks it. If the only
     // clear spot is very close, lift the camera so it looks down at the
     // hero instead of sitting inside his chest.
-    if (!G.inside && view !== 1 && view !== 4) {
+    if (!G.inside && view !== 1 && view !== 4 && !(carMode && view === 3)) {
       var sh = shortenCam(focus.x, focus.z, tx, tz);
       tx = sh.x; tz = sh.z;
       if (sh.cramped) ty = Math.max(ty, focusY + 3.1);
@@ -4580,7 +4662,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       camPos.y += rand(-1, 1) * G.shaken * 0.5;
     }
     camera.position.copy(camPos);
-    if (view === 1) camera.up.set(0, 0, -1); else camera.up.set(0, 1, 0);
+    if (view === 1 || (carMode && view === 5)) camera.up.set(0, 0, -1); else camera.up.set(0, 1, 0);
     camera.lookAt(camLook.x, camLook.y, camLook.z);
   }
 
@@ -4718,6 +4800,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     updateObjectiveIdle();
     updateHUD();
     camYaw = 0;
+    pendLookYaw = 0; pendLookPitch = 0; lastMX = null; lastMY = null; mouseHoldT = 0;
     camPos.set(heroState.pos.x, 4, heroState.pos.z + 9);
     toast("WELCOME TO NEON BAY", "Your car and bike are parked right here");
     sndClick();
@@ -4746,6 +4829,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     el("end-screen").style.display = "none";
     refreshMarkers(); updateObjectiveIdle(); updateHUD();
     camYaw = 0;
+    pendLookYaw = 0; pendLookPitch = 0; lastMX = null; lastMY = null; mouseHoldT = 0;
     toast("BACK ON THE BEACHFRONT", "Three jobs waiting");
   }
   // ---------- Map, person profile & backpack ----------

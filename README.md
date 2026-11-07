@@ -34,9 +34,10 @@ Once installed, the game opens fullscreen from your home screen / app list.
 Start screen shows only the title, a CONTROLS card and START PLAYING.
 
 - WASD move · Shift run · Space jump
+- Mouse — move to look around (no click, no drag, no pointer lock)
 - E enter / exit a car · in a car: WASD drive, Space handbrake
 - E at a glowing building door — go inside · inside, E at the EXIT door — back out
-- C or V change camera angle — follow · top · side · front · first-person
+- C or V change camera angle — on foot: follow · top · side · front · first-person; in a car: Follow · Inside car · Door · Hood · Rear · Top
 - M map · P profile · B backpack · top-right gear opens Settings
 - On a phone, use the on-screen buttons.
 
@@ -47,6 +48,8 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
 - All 35 buildings are enterable, with furnished interiors.
 - World Landmarks Park, north of the city: Eiffel Tower, Big Ben, Statue of
   Liberty, Sydney Opera House, Leaning Tower of Pisa, Colosseum, London Eye.
+- All cars are royal matte-black 3D supercars: angular carbon-black body,
+  Y-shaped cyan LED headlights, glowing orange wheels, red accents, "63" badge.
 - The hero's own separate home, east of the city, marked HOME in gold on the
   map: a modern two-storey white house with a cantilevered warm-lit glass
   upper box, dark grey tower, huge glass doors and red outdoor sofas, with a
