@@ -37,7 +37,7 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
 - Mouse — move to look around (no click, no drag, no pointer lock)
 - E enter / exit the supercar or the bike · in the supercar: WASD drive, Space handbrake
 - E at a glowing building door — go inside · inside, E at the EXIT door — back out
-- C or V change camera angle — on foot: Follow · Front · Top · Side · Person's view; in the supercar: Follow · Inside · Mirror · Door · Hood · Rear · Top · Car
+- C or V change camera angle — on foot: Follow · Front · Top · Side · Person's view; in the supercar: Front · Mirror · Door · Top (default Front)
 - M map · P profile · B backpack · top-right gear opens Settings
 - On a phone, use the on-screen buttons.
 
@@ -48,17 +48,18 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
 - All 35 buildings are enterable, with furnished interiors.
 - World Landmarks Park, north of the city: Eiffel Tower, Big Ben, Statue of
   Liberty, Sydney Opera House, Leaning Tower of Pisa, Colosseum, London Eye.
-- Two royal matte-black 3D supercars you can drive: one parked beside the
-  hero's start point, one on the forecourt of the hero's home. Both have a
-  detailed interior and live digital dashboard, Y-shaped cyan LED headlights,
-  glowing orange wheels, red accents, "63" badge.
-- Traffic is back: 10 photo-style supercars drive the city roads in both
+- Two bright silver metallic 3D supercars you can drive: one parked beside the
+  hero's start point (nose towards the beach), one on the forecourt of the
+  hero's home. Both have a hexagonal grille, a fixed carbon rear wing, slim
+  white LED headlights, silver wheels, and a detailed interior with a live
+  digital dashboard. No "63" badge.
+- Traffic is back: 10 bright silver supercars drive the city roads in both
   directions. No police cars.
 - A blue bike, rideable on the beachfront.
 - The hero's own separate home, east of the city, marked HOME in gold on the
   map: a modern two-storey white house with a cantilevered warm-lit glass
   upper box, dark grey tower, huge glass doors and red outdoor sofas, with the
-  black supercar parked outside it — press E to drive it.
+  silver supercar parked outside it — press E to drive it.
 - Map and profile are separate: a cyan MAP button opens only the total city
   map, an amber PROFILE button opens only the profile panel (with FULL PROFILE
   and BACKPACK). Settings (top-right gear): Sound, Camera, Graphics and City

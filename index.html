@@ -623,16 +623,12 @@
     <div class="set-row">
       <div class="set-label">CAR CAMERA<b>Camera angle — in the supercar</b></div>
       <div class="set-opts" id="set-carcamera">
-        <button class="set-opt" type="button" data-set="carcamera" data-val="0">Follow</button>
-        <button class="set-opt" type="button" data-set="carcamera" data-val="1">Inside</button>
+        <button class="set-opt" type="button" data-set="carcamera" data-val="4">Front</button>
         <button class="set-opt" type="button" data-set="carcamera" data-val="2">Mirror</button>
         <button class="set-opt" type="button" data-set="carcamera" data-val="3">Door</button>
-        <button class="set-opt" type="button" data-set="carcamera" data-val="4">Hood</button>
-        <button class="set-opt" type="button" data-set="carcamera" data-val="5">Rear</button>
         <button class="set-opt" type="button" data-set="carcamera" data-val="6">Top</button>
-        <button class="set-opt" type="button" data-set="carcamera" data-val="7">Car</button>
       </div>
-      <p class="set-note">Used while you sit in the supercar. Same eight angles as the C key.</p>
+      <p class="set-note">Used while you sit in the supercar. Same four angles as the C key.</p>
     </div>
     <div class="set-row">
       <div class="set-label">GRAPHICS<b>Picture quality</b></div>
@@ -672,7 +668,7 @@
     <div class="control-row"><span class="control-keys"><b>Shift</b></span><span>Run</span></div>
     <div class="control-row"><span class="control-keys"><b>Space</b></span><span>Jump · Handbrake in car / bike</span></div>
     <div class="control-row"><span class="control-keys"><b>E</b></span><span>Enter / exit car or bike · Enter building</span></div>
-    <div class="control-row"><span class="control-keys"><b>C</b></span><span>— camera: on foot Front / Top / Person's view · in the car Inside / Mirror / Door / Hood / Rear / Top</span></div>
+    <div class="control-row"><span class="control-keys"><b>C</b></span><span>— camera: on foot Front / Top / Person's view · in the car Front / Mirror / Door / Top</span></div>
     <div class="control-row"><span class="control-keys"><b>Mouse</b></span><span>— move to look around (no click)</span></div>
     <div class="control-row"><span class="control-keys"><b>M</b></span><span>Map</span></div>
     <div class="control-row"><span class="control-keys"><b>P</b></span><span>Profile</span></div>
@@ -2986,14 +2982,14 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       discGeo: new THREE.CylinderGeometry(0.2, 0.2, 0.07, 20).rotateZ(Math.PI / 2),
       glowGeo: new THREE.CircleGeometry(0.245, 20).rotateY(Math.PI / 2),
       ringGeo: new THREE.TorusGeometry(0.245, 0.02, 8, 28).rotateY(Math.PI / 2),
-      spokeGeo: new THREE.BoxGeometry(0.07, 0.52, 0.095),
+      spokeGeo: new THREE.BoxGeometry(0.06, 0.5, 0.075),
       capGeo: new THREE.CylinderGeometry(0.075, 0.075, 0.32, 10).rotateZ(Math.PI / 2),
-      barrelMat: new THREE.MeshStandardMaterial({ color: 0x17181c, roughness: 0.42, metalness: 0.75, envMap: carEnv(), envMapIntensity: 0.8, side: THREE.DoubleSide }),
+      barrelMat: new THREE.MeshStandardMaterial({ color: 0x9aa0a9, roughness: 0.3, metalness: 0.9, envMap: carEnv(), envMapIntensity: 0.8, side: THREE.DoubleSide }),
       hubBackMat: new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.95, metalness: 0.1, side: THREE.DoubleSide }),
-      spokeMat: new THREE.MeshStandardMaterial({ color: 0x2b2c31, roughness: 0.3, metalness: 0.9, envMap: carEnv(), envMapIntensity: 1.0 }),
+      spokeMat: new THREE.MeshStandardMaterial({ color: 0xd2d6dd, roughness: 0.2, metalness: 0.95, envMap: carEnv(), envMapIntensity: 1.25 }),
       discMat: new THREE.MeshStandardMaterial({ color: 0xb9bec7, roughness: 0.28, metalness: 0.95, envMap: carEnv(), envMapIntensity: 1.0 }),
-      glowMat: new THREE.MeshStandardMaterial({ color: 0x2a0f04, emissive: 0xff4d12, emissiveIntensity: 1.15, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide }),
-      ringMat: new THREE.MeshStandardMaterial({ color: 0x2a0f04, emissive: 0xff6a1a, emissiveIntensity: 1.9, roughness: 0.5, metalness: 0.1 }),
+      glowMat: new THREE.MeshStandardMaterial({ color: 0x15161a, roughness: 0.75, metalness: 0.2, side: THREE.DoubleSide }),
+      ringMat: new THREE.MeshStandardMaterial({ color: 0xb4bac3, roughness: 0.22, metalness: 0.95, envMap: carEnv(), envMapIntensity: 1.2 }),
       caliperMat: new THREE.MeshStandardMaterial({ color: 0xa3121f, roughness: 0.35, metalness: 0.5, envMap: carEnv(), envMapIntensity: 0.7 })
     };
     return wheelShared;
@@ -3003,10 +2999,10 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var L = opts.len || 4.8;
     var g = new THREE.Group();
     var ENV = carEnv();
-    // PBR paint: deep matte black with a clearcoat layer and soft sky
-    // reflections, like the photographed car under studio light.
-    var paint = new THREE.MeshPhysicalMaterial({ color: 0x141519, roughness: 0.42, metalness: 0.25, clearcoat: 0.9, clearcoatRoughness: 0.34, envMap: ENV, envMapIntensity: 0.85 });
-    var paintHi = new THREE.MeshPhysicalMaterial({ color: 0x23252b, roughness: 0.3, metalness: 0.3, clearcoat: 1, clearcoatRoughness: 0.2, envMap: ENV, envMapIntensity: 1.0 });
+    // PBR paint: bright silver metallic with a glossy clearcoat, like the
+    // silver supercar in the reference photo.
+    var paint = new THREE.MeshPhysicalMaterial({ color: 0xc3c8d0, roughness: 0.26, metalness: 0.62, clearcoat: 1, clearcoatRoughness: 0.12, envMap: ENV, envMapIntensity: 1.1 });
+    var paintHi = new THREE.MeshPhysicalMaterial({ color: 0xd9dde3, roughness: 0.2, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.1, envMap: ENV, envMapIntensity: 1.15 });
     var carbon = carbonMat();
     var glassM = new THREE.MeshPhysicalMaterial({ color: 0x0d151d, roughness: 0.06, metalness: 0.1, transparent: true, opacity: 0.55, clearcoat: 1, clearcoatRoughness: 0.08, envMap: ENV, envMapIntensity: 1.35 });
     var leather = leatherMat();
@@ -3020,11 +3016,29 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var nose = box(1.92, 0.3, 1.35, paint, 0, 0.56, L * 0.36); nose.rotation.x = 0.09; g.add(nose); // wedge nose
     g.add(box(1.66, 0.13, L * 0.3, paintHi, 0, 0.83, L * 0.3));                // sculpted bonnet panel
     g.add(box(2.08, 0.1, 0.55, carbon, 0, 0.2, L / 2 + 0.05));                 // carbon front splitter
-    g.add(box(1.7, 0.16, 0.9, carbon, 0, 0.34, L * 0.3, false));               // nose intake
-    for (var sl = 0; sl < 3; sl++) g.add(box(1.58, 0.022, 0.03, gapM, 0, 0.285 + sl * 0.055, L * 0.3 + 0.46, false)); // intake slats
+    // single-frame hexagonal grille: silver frame, black mesh, slats; plus
+    // a black mesh air intake in each lower corner of the bumper
+    function hexGeo(k, depth) {
+      var s = new THREE.Shape();
+      var pts = [[-0.62, 0.18], [0.62, 0.18], [0.7, 0], [0.5, -0.18], [-0.5, -0.18], [-0.7, 0]];
+      pts.forEach(function (p, i) { if (i) s.lineTo(p[0] * k, p[1] * k); else s.moveTo(p[0] * k, p[1] * k); });
+      s.closePath();
+      return new THREE.ExtrudeGeometry(s, { depth: depth, bevelEnabled: false });
+    }
+    var grilleFrame = new THREE.Mesh(hexGeo(1, 0.05), chromeD); grilleFrame.position.set(0, 0.5, L / 2 + 0.06); g.add(grilleFrame);
+    var grilleMesh = new THREE.Mesh(hexGeo(0.88, 0.06), mat(0x0a0b0d, 0.85, 0.1)); grilleMesh.position.set(0, 0.5, L / 2 + 0.07); g.add(grilleMesh);
+    var slatM = mat(0x30333a, 0.6, 0.4);
+    for (var sl = 0; sl < 4; sl++) g.add(box(1.08 - Math.abs(sl - 1.5) * 0.06, 0.012, 0.012, slatM, 0, 0.4 + sl * 0.07, L / 2 + 0.135, false));
+    [-1, 1].forEach(function (sd) {
+      g.add(box(0.4, 0.2, 0.05, mat(0x0a0b0d, 0.85, 0.1), sd * 0.82, 0.4, L / 2 + 0.06, false));   // corner intake
+      g.add(box(0.4, 0.014, 0.012, slatM, sd * 0.82, 0.4, L / 2 + 0.09, false));
+    });
     g.add(box(1.86, 0.24, 1.15, paint, 0, 0.72, -L * 0.36));                   // rear deck
-    g.add(box(0.09, 0.3, 0.75, carbon, 0, 0.98, -L * 0.42, false));            // rear fin
-    g.add(box(1.72, 0.045, 0.3, carbon, 0, 0.87, -L * 0.455, false));          // rear spoiler lip
+    [-1, 1].forEach(function (sd) {
+      g.add(box(0.05, 0.3, 0.2, carbon, sd * 0.62, 0.97, -L * 0.43, false));   // wing pylons
+      g.add(box(0.03, 0.14, 0.46, carbon, sd * 0.9, 1.12, -L * 0.45, false));  // wing end-plates
+    });
+    g.add(box(1.8, 0.04, 0.44, carbon, 0, 1.12, -L * 0.45, false));            // fixed carbon rear wing
     g.add(box(1.8, 0.13, 0.5, carbon, 0, 0.17, -L / 2 + 0.08));                // carbon rear diffuser
     for (var df = -3; df <= 3; df++) g.add(box(0.04, 0.16, 0.42, carbon, df * 0.24, 0.17, -L / 2 + 0.08, false)); // diffuser fins
     // panel gaps / shut lines: bonnet, doors and boot read as separate panels
@@ -3036,13 +3050,12 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     [-1, 1].forEach(function (sd) {
       g.add(box(0.07, 0.42, 1.15, carbon, sd * 1.0, 0.56, -L * 0.16, false));  // side air intakes
       g.add(box(0.05, 0.3, 0.6, carbon, sd * 1.01, 0.3, L * 0.02, false));     // carbon side skirt
-      g.add(box(0.03, 0.035, 1.5, redGlow, sd * 1.03, 0.4, -L * 0.2, false));  // red side accent line
       var exh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.2, 10).rotateX(Math.PI / 2), chromeD);
       exh.position.set(sd * 0.55, 0.3, -L / 2 - 0.04); g.add(exh);             // exhaust tip
       var exhGlow = new THREE.Mesh(new THREE.CircleGeometry(0.042, 10), exhMat);
       exhGlow.position.set(sd * 0.55, 0.3, -L / 2 - 0.145); exhGlow.rotation.y = Math.PI; g.add(exhGlow); // hot exhaust core
       g.add(box(0.14, 0.03, 0.03, paint, sd * 0.98, 1.0, L * 0.13, false));    // mirror stalks
-      g.add(box(0.05, 0.1, 0.16, carbon, sd * 1.06, 1.02, L * 0.13, false));   // wing mirror housings
+      g.add(box(0.05, 0.1, 0.16, paint, sd * 1.06, 1.02, L * 0.13, false));    // wing mirror housings
       var mf = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.08), mirrorFace);
       mf.position.set(sd * 1.09, 1.02, L * 0.13); mf.rotation.y = sd * Math.PI / 2; g.add(mf); // mirror glass
       // door shut lines + flush door handle
@@ -3059,7 +3072,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       var pil = box(0.055, 0.8, 0.05, paint, sd * 0.71, 1.03, L * 0.155, false); pil.rotation.x = -0.62; g.add(pil); // A-pillars
       var wp = box(0.018, 0.014, 0.44, dashM, sd * 0.3, 1.0, L * 0.185, false); wp.rotation.x = -0.5; wp.rotation.y = sd * 0.25; g.add(wp); // wipers
     });
-    g.add(box(1.34, 0.06, 1.5, carbon, 0, 1.21, -L * 0.06));                   // carbon roof panel
+    g.add(box(1.34, 0.06, 1.5, paint, 0, 1.21, -L * 0.06));                    // silver roof panel
     // --- detailed cabin ---
     g.add(box(1.46, 0.05, 2.1, leather, 0, 0.79, -0.15, false));               // cabin floor
     var dash = box(1.46, 0.2, 0.3, dashM, 0, 0.99, 0.74); dash.rotation.x = 0.15; g.add(dash); // dashboard
@@ -3110,13 +3123,15 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     g.add(box(0.46, 0.11, 0.03, dashM, 0, 1.13, 0.42, false));                 // rear-view mirror housing
     var rvGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.08), mirrorFace);
     rvGlass.position.set(0, 1.13, 0.402); rvGlass.rotation.y = Math.PI; g.add(rvGlass);
-    // --- Y-shaped cyan LED headlights + full-width rear light bar ---
-    var led = new THREE.MeshStandardMaterial({ color: 0xdffcff, emissive: 0xaef4ff, emissiveIntensity: 2.0 });
-    var ledDot = new THREE.MeshStandardMaterial({ color: 0xbffbff, emissive: 0x19d3e6, emissiveIntensity: 2.4 });
+    // --- slim angular LED headlights (white DRL line + projector) + full-width rear light bar ---
+    var led = new THREE.MeshStandardMaterial({ color: 0xf6faff, emissive: 0xe4f0ff, emissiveIntensity: 2.0 });
+    var ledDot = new THREE.MeshStandardMaterial({ color: 0xe8f4ff, emissive: 0xbfe0ff, emissiveIntensity: 2.2 });
+    var lampDark = new THREE.MeshPhysicalMaterial({ color: 0x0b0d11, roughness: 0.08, metalness: 0.4, clearcoat: 1, envMap: ENV, envMapIntensity: 1.3 });
     [-1, 1].forEach(function (sd) {
-      g.add(box(0.55, 0.045, 0.05, led, sd * 0.58, 0.64, L / 2 + 0.1, false));
-      var diag = box(0.05, 0.42, 0.05, led, sd * 0.82, 0.52, L / 2 + 0.1, false); diag.rotation.z = sd * 0.65; g.add(diag);
-      g.add(box(0.09, 0.05, 0.05, ledDot, sd * 0.34, 0.7, L / 2 + 0.1, false));
+      var lamp = box(0.62, 0.14, 0.06, lampDark, sd * 0.66, 0.63, L / 2 + 0.05, false); lamp.rotation.z = sd * 0.1; g.add(lamp); // lamp housing
+      var drl = box(0.58, 0.022, 0.03, led, sd * 0.66, 0.69, L / 2 + 0.095, false); drl.rotation.z = sd * 0.1; g.add(drl);   // upper LED line
+      var drl2 = box(0.4, 0.016, 0.03, led, sd * 0.62, 0.585, L / 2 + 0.095, false); drl2.rotation.z = sd * 0.1; g.add(drl2); // lower LED line
+      g.add(box(0.09, 0.07, 0.03, ledDot, sd * 0.5, 0.635, L / 2 + 0.095, false));                                           // projector
     });
     var tlS = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 1.1 });
     g.add(box(1.55, 0.05, 0.05, tlS, 0, 0.68, -L / 2 - 0.06, false));          // rear light bar
@@ -3129,10 +3144,6 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       g.add(box(0.17, 0.04, 0.04, im, sd * 0.88, 0.66, -L / 2 - 0.05, false));
       g.add(box(0.02, 0.03, 0.1, im, sd * 1.03, 0.62, L * 0.3, false));
     });
-    // "63" badge plate at the rear, like the reference car
-    var plate = box(0.44, 0.28, 0.04, carbon, 0.55, 0.98, -L * 0.44, false); plate.rotation.x = -0.18; g.add(plate);
-    var badge = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25), new THREE.MeshBasicMaterial({ map: badgeTexture() }));
-    badge.position.set(0.55, 0.99, -L * 0.44 - 0.035); badge.rotation.y = Math.PI; badge.rotation.x = -0.18; g.add(badge);
     if (opts.type === "taxi") {
       g.add(box(0.52, 0.15, 0.28, mat(0xf5f2e8, 0.4, 0.05, 0xffc93d, 0.6), 0, 1.32, -L * 0.06, false)); // TAXI roof sign
     }
@@ -3259,8 +3270,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var playerCar = makeVehicle(buildCar, 0x141519, HOME_X, -10.4, -Math.PI / 2, { beam: true });
   var homeCar = playerCar;
   // A second photo-style supercar parked right beside the hero's start
-  // (6 m east of the spawn point, clear of every collider).
-  var startCar = makeVehicle(buildCar, 0x141519, 6, 58, Math.PI * 0.9, { beam: true });
+  // (6 m east of the spawn point, clear of every collider, open road ahead).
+  var startCar = makeVehicle(buildCar, 0x141519, 6, 58, 0.2, { beam: true }); // nose towards the beach: clear road ahead, grille faces the start camera
   var playerVehicles = [playerBike, playerCar, startCar];
 
   // ---------- Traffic ----------
@@ -4236,8 +4247,11 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var camView = 0;
   // In the CAR, C / V / CAMERA cycle the eight car views (CAR_VIEWS
   // below); on foot and on the bike they cycle the five views above.
-  var CAR_VIEWS = ["Follow view", "Inside view", "Mirror view", "Door view", "Hood view", "Rear view", "Top view", "Car view"];
-  var carView = 0;
+  var CAR_VIEWS = ["Follow view", "Inside view", "Mirror view", "Door view", "Front view", "Rear view", "Top view", "Car view"];
+  // Only these four car angles are offered: Front (over the bonnet), Mirror
+  // (at the rear-view mirror), Door (beside the driver's door) and Top.
+  var CAR_VIEW_ORDER = [4, 2, 3, 6];
+  var carView = 4;
   // true only while sitting in the CAR (the bike keeps the on-foot views)
   function drivingCarView() {
     return !!(G.mode === "car" && G.drivingVehicle && G.drivingVehicle.kind === "car");
@@ -4250,7 +4264,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     if (!G.started || G.over) return;
     camSnap = true;
     if (drivingCarView()) {
-      carView = (carView + 1) % CAR_VIEWS.length;
+      carView = CAR_VIEW_ORDER[(CAR_VIEW_ORDER.indexOf(carView) + 1) % CAR_VIEW_ORDER.length];
       el("view-name").textContent = CAR_VIEWS[carView];
       toast(CAR_VIEWS[carView].toUpperCase(), "Press C or tap CAMERA to change angle");
     } else {
@@ -4267,7 +4281,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   }
   function setCarView(i) {
     if (drivingCarView()) {
-      carView = ((i % CAR_VIEWS.length) + CAR_VIEWS.length) % CAR_VIEWS.length;
+      carView = CAR_VIEW_ORDER.indexOf(i) >= 0 ? i : CAR_VIEW_ORDER[0];
       camSnap = true;
       refreshViewLabel();
     } else {
@@ -4402,7 +4416,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       });
       if (best) {
         G.mode = "car"; G.drivingVehicle = best;
-        if (best.kind === "car") carView = 0;
+        if (best.kind === "car") carView = CAR_VIEW_ORDER[0];
         camSnap = true;
         refreshViewLabel();
         hero.visible = false;
@@ -5202,7 +5216,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     startCar.heading = startCar.parkHeading; startCar.speed = 0;
     startCar.steerVis = 0; startCar.wheelVis = 0; startCar.pitch = 0;
     startCar.mesh.rotation.set(0, startCar.parkHeading, 0);
-    carView = 0;
+    carView = CAR_VIEW_ORDER[0];
     cops.forEach(function (c) {
       c.mesh.position.set(c.home.x, 0, c.home.z);
       c.heading = c.home.h; c.mesh.rotation.y = c.home.h; c.speed = 0;
@@ -5344,8 +5358,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     }
     // your vehicles (skip the one being driven — the arrow is there)
     if (G.drivingVehicle !== playerBike) dot(playerBike.mesh.position.x, playerBike.mesh.position.z, "#4d7dd1", big ? 7 : 4, "#fff");
-    if (G.drivingVehicle !== playerCar) dot(playerCar.mesh.position.x, playerCar.mesh.position.z, "#ff5a2a", big ? 7 : 4, "#fff");
     if (G.drivingVehicle !== startCar) dot(startCar.mesh.position.x, startCar.mesh.position.z, "#ff5a2a", big ? 7 : 4, "#fff");
+    if (G.drivingVehicle !== playerCar) dot(playerCar.mesh.position.x, playerCar.mesh.position.z, "#ff5a2a", big ? 7 : 4, "#fff");
     // vehicle-locate ping
     if (mapPing.t > 0) {
       var pring = ((tNow * 1.6) % 1) * (big ? 34 : 20) + 4;
@@ -5560,7 +5574,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         setCamView(parseInt(val, 10));
         toast(CAM_VIEWS[camView].toUpperCase(), "Camera angle set in Settings");
       } else if (kind === "carcamera") {
-        carView = ((parseInt(val, 10) % CAR_VIEWS.length) + CAR_VIEWS.length) % CAR_VIEWS.length;
+        carView = CAR_VIEW_ORDER.indexOf(parseInt(val, 10)) >= 0 ? parseInt(val, 10) : CAR_VIEW_ORDER[0];
         if (drivingCarView()) { camSnap = true; refreshViewLabel(); }
         toast(CAR_VIEWS[carView].toUpperCase(), drivingCarView() ? "Camera angle set in Settings" : "Used when you drive the supercar");
       } else if (kind === "graphics") {
