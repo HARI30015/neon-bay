@@ -21,10 +21,10 @@ Once installed, the game opens fullscreen from your home screen / app list.
 
 ## What is in this repo
 
-- `index.html` — the whole game in one file (about 3.8 MB). It contains the
-  city, buildings, interiors, landmarks, cars, people, jobs, police, camera
-  views and install support. That is why there are no separate source folders:
-  the game was built as a single-file web game.
+- `index.html` — the whole game in one file (about 3.9 MB). It contains the
+  city, buildings, interiors, landmarks, the supercar, the bike, people, jobs,
+  camera views and install support. That is why there are no separate source
+  folders: the game was built as a single-file web game.
 - `.nojekyll` — intentionally empty. It is a marker file that tells GitHub
   Pages to serve these files as-is, without Jekyll processing.
 - `README.md` — this file.
@@ -35,9 +35,9 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
 
 - WASD move · Shift run · Space jump
 - Mouse — move to look around (no click, no drag, no pointer lock)
-- E enter / exit a car · in a car: WASD drive, Space handbrake
+- E enter / exit the supercar or the bike · in the supercar: WASD drive, Space handbrake
 - E at a glowing building door — go inside · inside, E at the EXIT door — back out
-- C or V change camera angle — on foot: follow · top · side · front · first-person; in a car: Follow · Inside car · Door · Hood · Rear · Top
+- C or V change camera angle — on foot: Follow · Front · Top · Side · Person's view; in the supercar: Follow · Inside · Mirror · Door · Hood · Rear · Top · Car
 - M map · P profile · B backpack · top-right gear opens Settings
 - On a phone, use the on-screen buttons.
 
@@ -48,15 +48,16 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
 - All 35 buildings are enterable, with furnished interiors.
 - World Landmarks Park, north of the city: Eiffel Tower, Big Ben, Statue of
   Liberty, Sydney Opera House, Leaning Tower of Pisa, Colosseum, London Eye.
-- All cars are royal matte-black 3D supercars: angular carbon-black body,
-  Y-shaped cyan LED headlights, glowing orange wheels, red accents, "63" badge.
+- One car only: a royal matte-black 3D supercar with a detailed interior and
+  live digital dashboard, Y-shaped cyan LED headlights, glowing orange wheels,
+  red accents, "63" badge. No traffic cars and no police cars.
+- A blue bike, rideable on the beachfront.
 - The hero's own separate home, east of the city, marked HOME in gold on the
   map: a modern two-storey white house with a cantilevered warm-lit glass
-  upper box, dark grey tower, huge glass doors and red outdoor sofas, with a
-  black futuristic supercar (cyan Y-shaped lights, glowing orange wheels)
-  parked outside it — press E to drive it.
+  upper box, dark grey tower, huge glass doors and red outdoor sofas, with the
+  black supercar parked outside it — press E to drive it.
 - Map and profile are separate: a cyan MAP button opens only the total city
   map, an amber PROFILE button opens only the profile panel (with FULL PROFILE
   and BACKPACK). Settings (top-right gear): Sound, Camera, Graphics and City
   Time speed.
-- Three jobs, cash and respect, police and wanted stars, day-night cycle.
+- Three jobs, cash and respect, wanted stars, day-night cycle.
