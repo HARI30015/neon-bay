@@ -48,9 +48,12 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
 - All 35 buildings are enterable, with furnished interiors.
 - World Landmarks Park, north of the city: Eiffel Tower, Big Ben, Statue of
   Liberty, Sydney Opera House, Leaning Tower of Pisa, Colosseum, London Eye.
-- One car only: a royal matte-black 3D supercar with a detailed interior and
-  live digital dashboard, Y-shaped cyan LED headlights, glowing orange wheels,
-  red accents, "63" badge. No traffic cars and no police cars.
+- Two royal matte-black 3D supercars you can drive: one parked beside the
+  hero's start point, one on the forecourt of the hero's home. Both have a
+  detailed interior and live digital dashboard, Y-shaped cyan LED headlights,
+  glowing orange wheels, red accents, "63" badge.
+- Traffic is back: 10 photo-style supercars drive the city roads in both
+  directions. No police cars.
 - A blue bike, rideable on the beachfront.
 - The hero's own separate home, east of the city, marked HOME in gold on the
   map: a modern two-storey white house with a cantilevered warm-lit glass

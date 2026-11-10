@@ -3258,12 +3258,36 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // west towards the city. Traffic and police cars stay removed.
   var playerCar = makeVehicle(buildCar, 0x141519, HOME_X, -10.4, -Math.PI / 2, { beam: true });
   var homeCar = playerCar;
-  var playerVehicles = [playerBike, playerCar];
+  // A second photo-style supercar parked right beside the hero's start
+  // (6 m east of the spawn point, clear of every collider).
+  var startCar = makeVehicle(buildCar, 0x141519, 6, 58, Math.PI * 0.9, { beam: true });
+  var playerVehicles = [playerBike, playerCar, startCar];
 
   // ---------- Traffic ----------
-  // No traffic cars: this stays empty, so nothing spawns or drives and
-  // every traffic update below is a no-op.
+  // Photo-style supercars drive the city roads (same car as the hero's).
+  // Lanes sit on the free road corridors; vertical roads are two-way and
+  // switch lane when they turn round at the end, horizontal roads are
+  // two-way too. Police cars stay removed.
   var traffic = [];
+  (function spawnTraffic() {
+    // [vertical?, road centre, direction, start position, speed]
+    var plan = [
+      [true, -22.5, 1, -120, 10], [true, -22.5, -1, 20, 11],
+      [true, 22, 1, -40, 12], [true, 22, -1, -150, 9],
+      [true, -66.75, 1, -80, 10], [true, 66.25, -1, 10, 11],
+      [false, 22, 1, -120, 12], [false, 22, -1, 100, 10],
+      [false, -66, -1, 60, 11], [false, -110, 1, -50, 9]
+    ];
+    plan.forEach(function (p) {
+      var vertical = p[0], centre = p[1], dir = p[2];
+      var mesh = buildCar(0x141519, {});
+      scene.add(mesh);
+      // right-hand traffic: heading +z keeps to -x, heading +x keeps to +z
+      var lane = vertical ? centre + (dir > 0 ? -2.3 : 2.3) : centre + (dir > 0 ? 2.3 : -2.3);
+      traffic.push({ mesh: mesh, vertical: vertical, center: centre, lane: lane, dir: dir, pos: p[3], speed: p[4],
+        crashed: 0, brakeT: 0, indT: 0, steerVis: 0 });
+    });
+  })();
 
   // ---------- Police ----------
   // No police cars: this stays empty, so no police car spawns, patrols
@@ -4696,14 +4720,14 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       }
       t.pos += t.dir * t.speed * dt;
       if (t.vertical) {
-        if (t.pos > 58) { t.pos = 58; t.dir = -1; t.brakeT = 1.1; t.indT = 1.5; }
-        if (t.pos < -176) { t.pos = -176; t.dir = 1; t.brakeT = 1.1; t.indT = 1.5; }
+        if (t.pos > 58) { t.pos = 58; t.dir = -1; t.brakeT = 1.1; t.indT = 1.5; if (t.center != null) t.lane = t.center + 2.3; }
+        if (t.pos < -176) { t.pos = -176; t.dir = 1; t.brakeT = 1.1; t.indT = 1.5; if (t.center != null) t.lane = t.center - 2.3; }
         t.mesh.position.set(t.lane, 0, t.pos);
         t.mesh.rotation.y = t.dir > 0 ? 0 : Math.PI;
       } else {
-        if (t.pos > 184) t.pos = -184;
+        if (t.dir > 0 ? t.pos > 184 : t.pos < -184) t.pos = -t.dir * 184;
         t.mesh.position.set(t.pos, 0, t.lane);
-        t.mesh.rotation.y = Math.PI / 2;
+        t.mesh.rotation.y = t.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
       }
       var spin = t.speed * dt / 0.42;
       // Traffic front wheels steer into the U-turn at the end of a
@@ -5174,6 +5198,10 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     playerCar.heading = playerCar.parkHeading; playerCar.speed = 0;
     playerCar.steerVis = 0; playerCar.wheelVis = 0; playerCar.pitch = 0;
     playerCar.mesh.rotation.set(0, playerCar.parkHeading, 0);
+    startCar.mesh.position.set(startCar.parkX, 0, startCar.parkZ);
+    startCar.heading = startCar.parkHeading; startCar.speed = 0;
+    startCar.steerVis = 0; startCar.wheelVis = 0; startCar.pitch = 0;
+    startCar.mesh.rotation.set(0, startCar.parkHeading, 0);
     carView = 0;
     cops.forEach(function (c) {
       c.mesh.position.set(c.home.x, 0, c.home.z);
@@ -5317,6 +5345,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     // your vehicles (skip the one being driven — the arrow is there)
     if (G.drivingVehicle !== playerBike) dot(playerBike.mesh.position.x, playerBike.mesh.position.z, "#4d7dd1", big ? 7 : 4, "#fff");
     if (G.drivingVehicle !== playerCar) dot(playerCar.mesh.position.x, playerCar.mesh.position.z, "#ff5a2a", big ? 7 : 4, "#fff");
+    if (G.drivingVehicle !== startCar) dot(startCar.mesh.position.x, startCar.mesh.position.z, "#ff5a2a", big ? 7 : 4, "#fff");
     // vehicle-locate ping
     if (mapPing.t > 0) {
       var pring = ((tNow * 1.6) % 1) * (big ? 34 : 20) + 4;
