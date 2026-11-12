@@ -347,6 +347,36 @@
   }
   .controls-phone { margin: 10px 0 2px; font-size: 12.5px; color: rgba(244,241,234,.68); text-align: center; line-height: 1.5; }
   @media (max-width: 480px) { .control-keys { width: 112px; } .control-row { font-size: 13.5px; gap: 10px; } }
+  /* ---------- Account card: email sign-in + cloud save ---------- */
+  .auth-card {
+    margin: 16px 0 0; width: min(460px, 92vw); text-align: left; pointer-events: auto;
+    background: rgba(10,12,26,.82); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 12px; padding: 14px 18px; backdrop-filter: blur(6px);
+    box-shadow: 0 18px 44px rgba(0,0,0,.45);
+  }
+  .auth-title { font-size: 11px; font-weight: 800; letter-spacing: .28em; color: var(--cyan); text-align: center; margin-bottom: 4px; }
+  .auth-sub { margin: 0 0 10px; font-size: 12.5px; color: rgba(244,241,234,.68); text-align: center; line-height: 1.5; }
+  .auth-fields { display: flex; flex-direction: column; gap: 8px; }
+  .auth-fields input {
+    width: 100%; padding: 11px 12px; border-radius: 8px; font: inherit; font-size: 15px;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.25); color: var(--ink);
+    user-select: text; -webkit-user-select: text; touch-action: manipulation;
+  }
+  .auth-fields input::placeholder { color: rgba(244,241,234,.45); }
+  .auth-fields input:focus { outline: 2px solid var(--cyan); border-color: transparent; }
+  .auth-btns { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .auth-btn {
+    flex: 1 1 120px; cursor: pointer; border: 1px solid rgba(255,255,255,.28); border-radius: 8px;
+    background: rgba(255,255,255,.1); color: #fff; padding: 11px 14px; font-weight: 800; font-size: 14px; font-family: inherit;
+  }
+  .auth-btn.primary { background: #f4f1ea; color: #0a0c1a; border-color: #f4f1ea; }
+  .auth-btn:active { transform: translateY(1px); }
+  .auth-btn:disabled { opacity: .5; cursor: default; }
+  #auth-user { display: none; text-align: center; font-size: 14px; color: rgba(244,241,234,.94); line-height: 1.55; }
+  #auth-user b { color: #7dff9a; word-break: break-all; }
+  #auth-logout { margin-top: 10px; width: 100%; }
+  #auth-msg { min-height: 18px; margin: 10px 0 0; font-size: 13px; line-height: 1.45; text-align: center; color: #ffb3c8; }
+  #auth-msg.ok { color: #7dff9a; }
   .big-btn {
     pointer-events: auto; cursor: pointer; margin-top: 22px; border: 0; border-radius: 8px;
     background: linear-gradient(180deg, #ff5aa5, #e01e74); color: #fff;
@@ -676,6 +706,25 @@
     <div class="control-row"><span class="control-keys"><b>B</b></span><span>Backpack</span></div>
     <div class="control-row"><span class="control-keys"><b>⚙ Top-right</b></span><span>Settings</span></div>
     <p class="controls-phone">On a phone, use the on-screen buttons and the CAMERA button.</p>
+  </div>
+  <div class="auth-card" id="auth-card" aria-label="Your Neon Bay account">
+    <div class="auth-title">YOUR ACCOUNT</div>
+    <p class="auth-sub" id="auth-sub">Sign in to save your cash, respect, jobs and profile — they load again on any device. Playing without an account works too; progress then lasts for this session only.</p>
+    <div id="auth-form">
+      <div class="auth-fields">
+        <input id="auth-email" type="email" autocomplete="email" placeholder="Email address" aria-label="Email address" />
+        <input id="auth-password" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password" />
+      </div>
+      <div class="auth-btns">
+        <button class="auth-btn primary" id="auth-login" type="button">Log In</button>
+        <button class="auth-btn" id="auth-signup" type="button">Sign Up</button>
+      </div>
+    </div>
+    <div id="auth-user">
+      Signed in as <b id="auth-user-email"></b><br/>Your progress saves to this account as you play.
+      <button class="auth-btn" id="auth-logout" type="button">Log Out</button>
+    </div>
+    <p id="auth-msg" role="status" aria-live="polite"></p>
   </div>
   <button class="big-btn" id="start-btn">▶&nbsp; START PLAYING</button>
   <p id="install-note">✓ Neon Bay is installed — you are playing the app. Find it on your home screen / app list any time.</p>
@@ -5534,6 +5583,17 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     if (G.started) return;
     initAudio();
     G.started = true;
+    // Account save (Firebase): if a signed-in player's saved progress was
+    // loaded before the game started, restore it now. When nobody is signed
+    // in there is no pending save and starting is exactly as before.
+    if (window.__nbPendingSave) {
+      var nbS = window.__nbPendingSave; window.__nbPendingSave = null;
+      if (typeof nbS.money === "number") G.money = nbS.money;
+      if (typeof nbS.respect === "number") G.respect = nbS.respect;
+      if (nbS.jobsDone) { for (var nbK in G.jobsDone) { if (nbS.jobsDone[nbK]) G.jobsDone[nbK] = true; } }
+      if (nbS.bagQty) { for (var nbI = 0; nbI < bagItems.length; nbI++) { var nbQ = nbS.bagQty[bagItems[nbI].id]; if (typeof nbQ === "number") bagItems[nbI].qty = nbQ; } }
+      if (nbS.name) el("prof-name").value = nbS.name;
+    }
     el("start-screen").style.display = "none";
     hudEl.style.display = "block";
     touchEl.style.display = "block";
@@ -6043,9 +6103,289 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
+  // Account save (Firebase): publish a small live snapshot of the player's
+  // progress once a second. The sign-in script reads it and saves to the
+  // player's account when signed in; signed-out play never touches this.
+  setInterval(function () {
+    var nbBag = {};
+    for (var nbB = 0; nbB < bagItems.length; nbB++) { if (typeof bagItems[nbB].qty === "number") nbBag[bagItems[nbB].id] = bagItems[nbB].qty; }
+    window.__nbState = {
+      money: G.money, respect: G.respect,
+      jobsDone: { story: !!G.jobsDone.story, race: !!G.jobsDone.race, taxi: !!G.jobsDone.taxi },
+      bagQty: nbBag,
+      name: el("prof-name").value || "Beachfront Runner"
+    };
+  }, 1000);
+
   updateHUD();
   }, 30); });
 </script>
+<script>
+// ---------- Neon Bay account: email sign-in + cloud save (Firebase) ----------
+// Optional sign-in with email + password, using the Firebase project made
+// only for Neon Bay. When a player is signed in, their cash, respect, jobs
+// and profile are saved to their own Firestore document (users/{uid}) and
+// loaded back on any device. Signed out, the game plays exactly as before —
+// progress lasts for the session only, and login is never forced.
+// Firebase's v10 modular SDK is loaded from the official Google CDN only.
+// If it cannot be reached (offline, blocked), the panel says so in plain
+// words and the game still plays — nothing in here can break the game:
+// every call is wrapped and every promise is caught.
+(function () {
+  "use strict";
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBXNwVw-aWBRVVKuxHOSUUgcal-88dZumo",
+    authDomain: "neon-bay-b8572.firebaseapp.com",
+    projectId: "neon-bay-b8572",
+    storageBucket: "neon-bay-b8572.firebasestorage.app",
+    messagingSenderId: "548763808722",
+    appId: "1:548763808722:web:c2022a90c436eabbf3ce0b"
+  };
+  var FB_BASE = "https://www.gstatic.com/firebasejs/10.12.5/";
+
+  function $(id) { return document.getElementById(id); }
+  var emailEl = $("auth-email"), passEl = $("auth-password"),
+      loginBtn = $("auth-login"), signupBtn = $("auth-signup"), logoutBtn = $("auth-logout"),
+      formEl = $("auth-form"), userEl = $("auth-user"), userEmailEl = $("auth-user-email"),
+      subEl = $("auth-sub"), msgEl = $("auth-msg");
+  if (!emailEl || !passEl || !loginBtn || !signupBtn || !logoutBtn) return;
+
+  // Typing in these fields must never reach the game's keys (Space/Enter on
+  // the start screen would otherwise start the game mid-typing).
+  [emailEl, passEl].forEach(function (inp) {
+    inp.addEventListener("keydown", function (e) { e.stopPropagation(); });
+    inp.addEventListener("keyup", function (e) { e.stopPropagation(); });
+  });
+
+  var fbApp = null, fbAuth = null, fbFs = null;   // the loaded SDK modules
+  var auth = null, db = null;                     // Auth + Firestore handles
+  var user = null;                                // the signed-in player
+  var loadPromise = null;                         // in-flight SDK load
+  var saveBlocked = false;                        // database refused saves (rules)
+  var lastKey = null;                             // fingerprint of last saved state
+  var saveTimer = null, watchTimer = null;
+
+  function setMsg(text, ok) {
+    msgEl.textContent = text || "";
+    msgEl.className = ok ? "ok" : "";
+  }
+  function setBusy(busy) {
+    loginBtn.disabled = busy; signupBtn.disabled = busy; logoutBtn.disabled = busy;
+  }
+  function plainError(err) {
+    var code = (err && err.code) || "";
+    if (code === "auth/invalid-email") return "That email address doesn't look right — check it and try again.";
+    if (code === "auth/user-not-found" || code === "auth/wrong-password" || code === "auth/invalid-credential" || code === "auth/invalid-login-credentials")
+      return "Wrong email or password — please try again.";
+    if (code === "auth/email-already-in-use") return "That email already has an account — tap Log In instead.";
+    if (code === "auth/weak-password") return "That password is too weak — use at least 6 characters.";
+    if (code === "auth/user-disabled") return "This account has been switched off — it can't sign in.";
+    if (code === "auth/too-many-requests") return "Too many tries in a row — wait a moment, then try again.";
+    if (code === "auth/network-request-failed") return "No connection to the sign-in service — check your internet and try again.";
+    if (code === "auth/operation-not-allowed") return "Email sign-in isn't switched on for this game yet.";
+    return "Something went wrong — please try again.";
+  }
+  function isPermissionError(err) {
+    var code = (err && err.code) || "";
+    return code === "permission-denied" || code === "firestore/permission-denied" || /permission/i.test(String((err && err.message) || ""));
+  }
+
+  // ----- the save document: users/{uid}, only the player's own data -----
+  function keyOf(s) {
+    return JSON.stringify({
+      m: s.money, r: s.respect,
+      j: [!!s.jobsDone.story, !!s.jobsDone.race, !!s.jobsDone.taxi],
+      b: s.bagQty || {}, n: s.name || ""
+    });
+  }
+  function docData(s) {
+    var done = (s.jobsDone.story ? 1 : 0) + (s.jobsDone.race ? 1 : 0) + (s.jobsDone.taxi ? 1 : 0);
+    return {
+      email: user ? user.email : "",
+      cash: s.money,
+      respect: s.respect,
+      jobsDone: { story: !!s.jobsDone.story, race: !!s.jobsDone.race, taxi: !!s.jobsDone.taxi },
+      jobsCompleted: done,
+      profile: { name: s.name || "Beachfront Runner", bagQty: s.bagQty || {} },
+      updatedAt: fbFs.serverTimestamp(),
+      updatedAtMs: Date.now()
+    };
+  }
+  function gameState() {
+    var s = window.__nbState;
+    if (!s || typeof s.money !== "number" || !s.jobsDone) return null;
+    return s;
+  }
+  function saveNow() {
+    if (!user || !db || !fbFs || saveBlocked) return Promise.resolve(false);
+    var s = gameState();
+    if (!s) return Promise.resolve(false);
+    if (keyOf(s) === lastKey) return Promise.resolve(true);
+    var ref = fbFs.doc(db, "users", user.uid);
+    return fbFs.setDoc(ref, docData(s), { merge: true }).then(function () {
+      lastKey = keyOf(s);
+      return true;
+    }).catch(function (err) {
+      if (isPermissionError(err)) {
+        saveBlocked = true;
+        setMsg("Save not available — check the database rules");
+      }
+      return false;
+    });
+  }
+  function queueSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () { saveTimer = null; saveNow(); }, 1200);
+  }
+  function startWatching() {
+    if (watchTimer) return;
+    watchTimer = setInterval(function () {
+      if (!user || saveBlocked) return;
+      var s = gameState();
+      if (s && keyOf(s) !== lastKey) queueSave();
+    }, 2000);
+  }
+  function loadSave(u) {
+    var ref = fbFs.doc(db, "users", u.uid);
+    return fbFs.getDoc(ref).then(function (snap) {
+      if (!snap.exists()) {
+        lastKey = null; // first save will create the document
+        setMsg("Signed in — your progress now saves to this account as you play.", true);
+        return;
+      }
+      var d = snap.data() || {};
+      var pending = {
+        money: typeof d.cash === "number" ? d.cash : 0,
+        respect: typeof d.respect === "number" ? d.respect : 0,
+        jobsDone: d.jobsDone || {},
+        bagQty: (d.profile && d.profile.bagQty) || {},
+        name: (d.profile && d.profile.name) || ""
+      };
+      window.__nbPendingSave = pending;
+      lastKey = keyOf({ money: pending.money, respect: pending.respect, jobsDone: pending.jobsDone, bagQty: pending.bagQty, name: pending.name });
+      setMsg("Welcome back — your saved progress loads when you press START PLAYING.", true);
+    }).catch(function (err) {
+      if (isPermissionError(err)) {
+        saveBlocked = true;
+        setMsg("Save not available — check the database rules");
+      } else {
+        setMsg("Signed in, but your saved progress couldn't load just now. You can still play.");
+      }
+    });
+  }
+
+  function applyUi() {
+    if (user) {
+      formEl.style.display = "none";
+      subEl.style.display = "none";
+      userEl.style.display = "block";
+      userEmailEl.textContent = user.email || "";
+    } else {
+      formEl.style.display = "block";
+      subEl.style.display = "block";
+      userEl.style.display = "none";
+      userEmailEl.textContent = "";
+    }
+  }
+
+  function onUser(u) {
+    user = u || null;
+    applyUi();
+    if (user) {
+      saveBlocked = false;
+      loadSave(user);
+      startWatching();
+    } else {
+      window.__nbPendingSave = null;
+      lastKey = null;
+    }
+  }
+
+  function loadFirebase() {
+    if (fbApp) return Promise.resolve(true);
+    if (loadPromise) return loadPromise;
+    loadPromise = Promise.all([
+      import(FB_BASE + "firebase-app.js"),
+      import(FB_BASE + "firebase-auth.js"),
+      import(FB_BASE + "firebase-firestore.js")
+    ]).then(function (mods) {
+      fbApp = mods[0]; fbAuth = mods[1]; fbFs = mods[2];
+      var app = fbApp.initializeApp(FIREBASE_CONFIG);
+      auth = fbAuth.getAuth(app);
+      db = fbFs.getFirestore(app);
+      fbAuth.onAuthStateChanged(auth, onUser);
+      loadPromise = null;
+      return true;
+    }).catch(function () {
+      loadPromise = null;
+      return false;
+    });
+    return loadPromise;
+  }
+  function ensureReady() {
+    return loadFirebase().then(function (ok) {
+      if (!ok) setMsg("Sign-in isn't available right now — no connection to the sign-in service. You can still play; progress just won't save.");
+      return ok && !!auth;
+    });
+  }
+
+  function credentials() {
+    var email = (emailEl.value || "").trim();
+    var pass = passEl.value || "";
+    if (!email) { setMsg("Type your email address first."); return null; }
+    if (!pass) { setMsg("Type your password first."); return null; }
+    return { email: email, pass: pass };
+  }
+
+  signupBtn.addEventListener("click", function () {
+    var c = credentials(); if (!c) return;
+    setBusy(true); setMsg("Creating your account…", true);
+    ensureReady().then(function (ready) {
+      if (!ready) { setBusy(false); return; }
+      return fbAuth.createUserWithEmailAndPassword(auth, c.email, c.pass).then(function () {
+        passEl.value = "";
+        setMsg("Account created — you're signed in, and your progress now saves as you play.", true);
+      }).catch(function (err) { setMsg(plainError(err)); }).then(function () { setBusy(false); });
+    });
+  });
+  loginBtn.addEventListener("click", function () {
+    var c = credentials(); if (!c) return;
+    setBusy(true); setMsg("Signing you in…", true);
+    ensureReady().then(function (ready) {
+      if (!ready) { setBusy(false); return; }
+      return fbAuth.signInWithEmailAndPassword(auth, c.email, c.pass).then(function () {
+        passEl.value = "";
+      }).catch(function (err) { setMsg(plainError(err)); }).then(function () { setBusy(false); });
+    });
+  });
+  passEl.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); loginBtn.click(); } });
+  logoutBtn.addEventListener("click", function () {
+    if (!auth || !fbAuth) return;
+    setBusy(true); setMsg("Saving your progress…", true);
+    // Save first, then sign out — in that order, so the save still counts.
+    saveNow().then(function () {
+      return fbAuth.signOut(auth);
+    }).then(function () {
+      setMsg("Signed out — your progress is saved to your account. See you next time.", true);
+    }).catch(function () {
+      setMsg("Couldn't sign out just now — please try again.");
+    }).then(function () { setBusy(false); });
+  });
+  // If the tab is hidden mid-play, flush any waiting save right away.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden" && user && !saveBlocked) {
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+      saveNow();
+    }
+  });
+
+  applyUi();
+  loadFirebase().then(function (ok) {
+    if (!ok) setMsg("Sign-in isn't available right now — no connection to the sign-in service. You can still play; progress just won't save.");
+  });
+})();
+</script>
+
 <script>
 // ---------- Install as an app (PWA) ----------
 (function () {

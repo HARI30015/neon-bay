@@ -1,7 +1,10 @@
 # Neon Bay — Realistic Beachfront City Game
 
-A browser-playable 3D open-world city game. No download, no login, no install
-required to play — open the game link and press START PLAYING.
+A browser-playable 3D open-world city game. No download or install
+required to play — open the game link and press START PLAYING. Login is
+optional: sign up / log in with email + password on the start screen to
+save your cash, respect, completed jobs and profile forever to your
+own Firebase account (Firestore); signed-out play is unchanged.
 
 ## Play it
 
@@ -78,3 +81,8 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
   buildings, the spire and the supercar, a procedural sky with sun
   and moon, lit windows and warm lamp lights at night, and PBR
   materials throughout.
+- Email + password login (Firebase, project neon-bay-b8572): an
+  account card on the start screen with Sign Up, Log In and Log
+  Out. When signed in, cash, respect, completed jobs and profile
+  auto-save to Firestore users/{uid} and load back on the next
+  sign-in. Login is never forced; the game still plays without it.
