@@ -790,6 +790,9 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
+  // sharper textures at grazing angles (roads, pavements, facades)
+  var MAXANISO = 8;
+  try { MAXANISO = Math.max(4, Math.min(8, renderer.capabilities.getMaxAnisotropy())); } catch (e) {}
 
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87b5d9);
@@ -801,14 +804,15 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     topColor: { value: new THREE.Color(0x3d7dc4) },
     horizonColor: { value: new THREE.Color(0xd7e7f2) },
     bottomColor: { value: new THREE.Color(0x9db8cc) },
-    offset: { value: 18 }, exponent: { value: 0.62 }
+    offset: { value: 18 }, exponent: { value: 0.62 },
+    sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunStr: { value: 0 }, sunTint: { value: new THREE.Color(1.0, 0.86, 0.62) }
   };
   var skyDome = new THREE.Mesh(
     new THREE.SphereGeometry(760, 24, 14),
     new THREE.ShaderMaterial({
       uniforms: skyUniforms, side: THREE.BackSide, depthWrite: false, fog: false,
       vertexShader: "varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-      fragmentShader: "uniform vec3 topColor; uniform vec3 horizonColor; uniform vec3 bottomColor; uniform float offset; uniform float exponent; varying vec3 vP; void main(){ float h = normalize(vP + vec3(0.0, offset, 0.0)).y; vec3 col = h > 0.0 ? mix(horizonColor, topColor, pow(max(h,0.0), exponent)) : mix(horizonColor, bottomColor, pow(max(-h,0.0), 0.6)); gl_FragColor = vec4(col, 1.0); }"
+      fragmentShader: "uniform vec3 topColor; uniform vec3 horizonColor; uniform vec3 bottomColor; uniform float offset; uniform float exponent; uniform vec3 sunDir; uniform float sunStr; uniform vec3 sunTint; varying vec3 vP; void main(){ float h = normalize(vP + vec3(0.0, offset, 0.0)).y; vec3 col = h > 0.0 ? mix(horizonColor, topColor, pow(max(h,0.0), exponent)) : mix(horizonColor, bottomColor, pow(max(-h,0.0), 0.6)); float s = max(dot(normalize(vP), sunDir), 0.0); col += sunTint * sunStr * (pow(s, 240.0) * 1.1 + pow(s, 16.0) * 0.30 + pow(s, 4.0) * 0.09); col = mix(col, horizonColor, exp(-abs(h) * 9.0) * 0.16); gl_FragColor = vec4(col, 1.0); }"
     })
   );
   scene.add(skyDome);
@@ -827,7 +831,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   scene.add(fill); scene.add(fill.target);
   var sun = new THREE.DirectionalLight(0xfff2d9, 1.6);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -85; sun.shadow.camera.right = 85;
   sun.shadow.camera.top = 85; sun.shadow.camera.bottom = -85;
   sun.shadow.camera.far = 420;
@@ -866,20 +870,36 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       g.fillRect(Math.random() * w, Math.random() * h, 1.6, 1.6);
     }
   }
+  function blotches(g, n, aDark, aLight) {
+    // soft tonal patches so a repeated surface never reads as one flat tile
+    for (var q = 0; q < n; q++) {
+      var br = 16 + Math.random() * 40, bx = br + Math.random() * (256 - br * 2), by = br + Math.random() * (256 - br * 2);
+      var gr = g.createRadialGradient(bx, by, 0, bx, by, br);
+      gr.addColorStop(0, Math.random() < 0.5 ? "rgba(0,0,0," + aDark + ")" : "rgba(255,255,255," + aLight + ")");
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gr; g.fillRect(bx - br, by - br, br * 2, br * 2);
+    }
+  }
   function groundTexture(base, fleck, joints) {
-    var c = document.createElement("canvas"); c.width = c.height = 256;
-    var g = c.getContext("2d");
+    var c = document.createElement("canvas"); c.width = c.height = 512;
+    var g = c.getContext("2d"); g.scale(2, 2);
     g.fillStyle = base; g.fillRect(0, 0, 256, 256);
-    noiseOn(g, 256, 256, 2400, 0.10);
-    if (fleck) { g.fillStyle = fleck; for (var i = 0; i < 260; i++) g.fillRect(Math.random() * 256, Math.random() * 256, 2.4, 1.2); }
+    blotches(g, 22, 0.10, 0.08);
+    noiseOn(g, 256, 256, 4600, 0.12);
+    if (fleck) { g.fillStyle = fleck; for (var i = 0; i < 380; i++) g.fillRect(Math.random() * 256, Math.random() * 256, 2.4, 1.2); }
     if (joints) {
-      g.strokeStyle = "rgba(0,0,0,0.28)"; g.lineWidth = 2;
+      // every slab gets its own slight tone, then dark joints with a lit edge
+      for (var sy = 0; sy < 4; sy++) for (var sx = 0; sx < 4; sx++) {
+        g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0," + (Math.random() * 0.07) + ")" : "rgba(255,255,255," + (Math.random() * 0.06) + ")";
+        g.fillRect(sx * 64, sy * 64, 64, 64);
+      }
+      g.strokeStyle = "rgba(0,0,0,0.34)"; g.lineWidth = 2;
       for (var j = 0; j <= 256; j += 64) { g.beginPath(); g.moveTo(j, 0); g.lineTo(j, 256); g.stroke(); g.beginPath(); g.moveTo(0, j); g.lineTo(256, j); g.stroke(); }
-      g.strokeStyle = "rgba(255,255,255,0.06)"; g.lineWidth = 1;
-      for (var k = 2; k <= 256; k += 64) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k, 256); g.stroke(); }
+      g.strokeStyle = "rgba(255,255,255,0.10)"; g.lineWidth = 1;
+      for (var k = 2; k <= 256; k += 64) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k, 256); g.stroke(); g.beginPath(); g.moveTo(0, k); g.lineTo(256, k); g.stroke(); }
     }
     var t = new THREE.CanvasTexture(c);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     return t;
   }
   function shopSignTexture(text, bg, fg) {
@@ -890,7 +910,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     g.font = "700 40px Georgia, 'Times New Roman', serif";
     g.textAlign = "center"; g.textBaseline = "middle";
     g.fillStyle = fg; g.fillText(text, 256, 44);
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     return t;
   }
 
@@ -913,28 +933,43 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // Outer ground: patchy grass / earth beyond the city, like real outskirts
   var outerTex = groundTexture("#6f7f56", "rgba(60,70,40,0.5)", false); outerTex.repeat.set(30, 30);
   var ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 900),
-    new THREE.MeshStandardMaterial({ map: outerTex, roughness: 1, metalness: 0 }));
+    new THREE.MeshStandardMaterial({ map: outerTex, bumpMap: outerTex, bumpScale: 0.6, roughness: 1, metalness: 0 }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.04; ground.receiveShadow = true;
   scene.add(ground);
 
   // Real asphalt: dark grey, aggregate speckle, faint patching and cracks
   function asphaltTexture() {
-    var c = document.createElement("canvas"); c.width = c.height = 256;
-    var g = c.getContext("2d");
-    g.fillStyle = "#3a3a3d"; g.fillRect(0, 0, 256, 256);
-    noiseOn(g, 256, 256, 3200, 0.13);
-    g.fillStyle = "rgba(0,0,0,0.10)";
+    var c = document.createElement("canvas"); c.width = c.height = 512;
+    var g = c.getContext("2d"); g.scale(2, 2);
+    g.fillStyle = "#38383b"; g.fillRect(0, 0, 256, 256);
+    blotches(g, 26, 0.16, 0.05);
+    noiseOn(g, 256, 256, 7000, 0.15);
+    // bright aggregate chips
+    g.fillStyle = "rgba(200,200,205,0.18)";
+    for (var ch = 0; ch < 260; ch++) g.fillRect(Math.random() * 256, Math.random() * 256, 1.4, 1.4);
+    // repaired patches, oil stains
+    g.fillStyle = "rgba(0,0,0,0.12)";
     g.fillRect(20, 150, 90, 60); g.fillRect(170, 30, 70, 44);
-    g.strokeStyle = "rgba(0,0,0,0.22)"; g.lineWidth = 1;
+    for (var os = 0; os < 3; os++) {
+      var ox = 30 + Math.random() * 196, oy = 30 + Math.random() * 196, orr = 8 + Math.random() * 14;
+      var og = g.createRadialGradient(ox, oy, 0, ox, oy, orr);
+      og.addColorStop(0, "rgba(10,10,14,0.35)"); og.addColorStop(1, "rgba(10,10,14,0)");
+      g.fillStyle = og; g.fillRect(ox - orr, oy - orr, orr * 2, orr * 2);
+    }
+    // cracks with branches
+    g.strokeStyle = "rgba(0,0,0,0.30)"; g.lineWidth = 1;
     g.beginPath(); g.moveTo(30, 0); g.lineTo(52, 90); g.lineTo(44, 170); g.stroke();
-    g.beginPath(); g.moveTo(200, 256); g.lineTo(188, 180); g.stroke();
+    g.beginPath(); g.moveTo(52, 90); g.lineTo(78, 112); g.stroke();
+    g.beginPath(); g.moveTo(200, 256); g.lineTo(188, 180); g.lineTo(204, 140); g.stroke();
+    g.beginPath(); g.moveTo(188, 180); g.lineTo(160, 170); g.stroke();
     var t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(30, 10);
-    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     return t;
   }
+  var asphaltMap = asphaltTexture();
   var cityFloor = new THREE.Mesh(new THREE.PlaneGeometry(CITY * 2 + 60, BEACH_Z + 40),
-    new THREE.MeshStandardMaterial({ map: asphaltTexture(), roughness: 0.96, metalness: 0 }));
+    new THREE.MeshStandardMaterial({ map: asphaltMap, bumpMap: asphaltMap, bumpScale: 0.8, roughness: 0.9, metalness: 0.02 }));
   cityFloor.rotation.x = -Math.PI / 2;
   cityFloor.position.set(0, 0.02, (BEACH_Z - 120) / 2);
   cityFloor.receiveShadow = true;
@@ -966,7 +1001,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
 
   // Pavements: pale concrete slabs with real joints — the kerb every block sits on
   var paveTex = groundTexture("#9d9a92", "rgba(120,115,105,0.6)", true); paveTex.repeat.set(6, 6);
-  var padMat = new THREE.MeshStandardMaterial({ map: paveTex, roughness: 0.95, metalness: 0 });
+  var padMat = new THREE.MeshStandardMaterial({ map: paveTex, bumpMap: paveTex, bumpScale: 0.7, roughness: 0.92, metalness: 0 });
   var padGeo = new THREE.BoxGeometry(BLOCK - ROAD, 0.22, BLOCK - ROAD);
   for (var gx = -3; gx <= 3; gx++) {
     for (var gz = -3; gz <= 1; gz++) {
@@ -979,13 +1014,13 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // Beachfront promenade: warm stone slabs like a real seafront walkway
   var promTex = groundTexture("#b3a58e", "rgba(140,125,100,0.6)", true); promTex.repeat.set(40, 2);
   var prom = new THREE.Mesh(new THREE.BoxGeometry(CITY * 2 + 40, 0.24, 15),
-    new THREE.MeshStandardMaterial({ map: promTex, roughness: 0.92, metalness: 0 }));
+    new THREE.MeshStandardMaterial({ map: promTex, bumpMap: promTex, bumpScale: 0.7, roughness: 0.88, metalness: 0 }));
   prom.position.set(0, 0.12, 70); prom.receiveShadow = true; scene.add(prom);
 
   // Sand — grainy, rippled, with a darker wet strip at the waterline
   var sandTex = groundTexture("#dcc08e", "rgba(190,160,105,0.7)", false); sandTex.repeat.set(36, 4);
   var sand = new THREE.Mesh(new THREE.PlaneGeometry(620, 60),
-    new THREE.MeshStandardMaterial({ map: sandTex, roughness: 1, metalness: 0 }));
+    new THREE.MeshStandardMaterial({ map: sandTex, bumpMap: sandTex, bumpScale: 0.9, roughness: 1, metalness: 0 }));
   sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0.05, BEACH_Z + 24);
   sand.receiveShadow = true; scene.add(sand);
   var wetSand = new THREE.Mesh(new THREE.PlaneGeometry(620, 7), mat(0xa8845c, 0.5, 0));
@@ -1015,7 +1050,24 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   })();
 
   // Ocean (animated in the loop) — blue-green sea with real sun glitter
-  var oceanMat = new THREE.MeshStandardMaterial({ color: 0x1d6f8e, roughness: 0.16, metalness: 0.12, transparent: true, opacity: 0.96, emissive: 0x0a3040, emissiveIntensity: 0.18 });
+  function rippleTexture() {
+    var c = document.createElement("canvas"); c.width = c.height = 256;
+    var g = c.getContext("2d");
+    g.fillStyle = "#808080"; g.fillRect(0, 0, 256, 256);
+    for (var i = 0; i < 520; i++) {
+      var x = Math.random() * 256, y = Math.random() * 256, r = 2 + Math.random() * 9;
+      var gr = g.createRadialGradient(x, y, 0, x, y, r);
+      var hi = Math.random() < 0.5;
+      gr.addColorStop(0, hi ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)"); gr.addColorStop(1, "rgba(128,128,128,0)");
+      g.fillStyle = gr;
+      // draw each ripple also shifted by a full tile so the texture repeats without seams
+      [[0, 0], [256, 0], [-256, 0], [0, 256], [0, -256]].forEach(function (o) { g.save(); g.translate(o[0], o[1]); g.fillRect(x - r, y - r, r * 2, r * 2); g.restore(); });
+    }
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(36, 10); t.anisotropy = MAXANISO;
+    return t;
+  }
+  var oceanMat = new THREE.MeshStandardMaterial({ color: 0x1d6f8e, roughness: 0.14, metalness: 0.14, transparent: true, opacity: 0.96, emissive: 0x0a3040, emissiveIntensity: 0.18, bumpMap: rippleTexture(), bumpScale: 0.35 });
   var ocean = new THREE.Mesh(new THREE.PlaneGeometry(900, 320, 24, 8), oceanMat);
   ocean.rotation.x = -Math.PI / 2; ocean.position.set(0, 0.35, BEACH_Z + 60 + 150);
   scene.add(ocean);
@@ -1146,7 +1198,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         }
       }
     }
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     facadeCache[cacheKey] = t; return t;
   }
 
@@ -1215,7 +1267,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         g.fillStyle = "rgba(96,78,48,0.16)"; g.fillRect(wx + ww * 0.25, wy0 + wh + 9, ww * 0.5, 12);
       }
     }
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     facadeCache.heritage = t; return t;
   }
 
@@ -1480,7 +1532,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     gg.addColorStop(0,"rgba(70,72,66,0)"); gg.addColorStop(1,"rgba(70,72,66,0.20)");
     g.fillStyle = gg; g.fillRect(0, H-26, W, 26);
     var t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
     facadeCache[cacheKey] = t;
     return t;
@@ -1495,7 +1547,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     g.fillStyle="#141a20";
     for(var mx=0;mx<=512;mx+=128) g.fillRect(mx-3,0,6,256);
     g.fillRect(0,125,512,6);
-    var t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t;
+    var t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy = MAXANISO; return t;
   }
   var sharedGlassTex = null;
   // Ground floor lobby like photo: recessed warm glass entrance, dark frames, no shop signs
@@ -1534,7 +1586,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     g.fillStyle="#e8b95c"; g.fillRect(498,128,7,26); g.fillRect(519,128,7,26);
     g.font="600 15px Arial"; g.textAlign="center"; g.fillStyle="rgba(30,32,36,0.92)";
     g.fillText(isHotel? name : "RESIDENCE  •  ENTRANCE", 512, 15);
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     frontageCache[fKey] = t;
     return t;
   }
@@ -1740,7 +1792,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     g.fillRect(0, 0, 512, 7); g.fillRect(0, 249, 512, 7);
     g.fillRect(0, 0, 7, 256); g.fillRect(505, 0, 7, 256);
     g.fillRect(168, 0, 7, 256); g.fillRect(338, 0, 7, 256);
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     return t;
   }
   function buildHome() {
@@ -1872,7 +1924,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     g.fillText(title, 256, 46);
     g.fillStyle = "#d8a92c"; g.font = "600 25px Georgia, serif";
     g.fillText(sub, 256, 92);
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     return t;
   }
   function addPlaque(group, lx, lz, title, sub) {
@@ -1977,7 +2029,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     g.lineWidth = 6;
     g.beginPath(); g.moveTo(128, 128); g.lineTo(128 - 62, 128 - 58); g.stroke(); // minute hand
     g.beginPath(); g.arc(128, 128, 9, 0, 7); g.fillStyle = "#22242a"; g.fill();
-    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     return t;
   }
   function buildBigBen(cx, cz) {
@@ -2155,7 +2207,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     }
     var t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 1);
-    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     return t;
   }
   function buildPisa(cx, cz) {
@@ -2224,7 +2276,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     for (var wx = 16; wx < 512; wx += 42) g.fillRect(wx, 234, 12, 13);
     var t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 1);
-    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO;
     return t;
   }
   function buildColosseum(cx, cz) {
@@ -2362,7 +2414,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
 
   // ---------- Palm trees (instanced: 2 draw calls for every palm) ----------
   var trunkMat = mat(0x7a5c3e, 0.95, 0);
-  var frondMat = mat(0x3d7d44, 0.9, 0);
+  var frondMat = mat(0x3d7d44, 0.8, 0); frondMat.side = THREE.DoubleSide;
   var palmXforms = [];
   function palm(x, z, s) {
     palmXforms.push({ x: x, z: z, s: s || 1, rot: rand(0, Math.PI * 2), lean: rand(-0.09, 0.09) });
@@ -2380,14 +2432,22 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   (function buildPalms() {
     var trunkGeo = new THREE.CylinderGeometry(0.22, 0.34, 6.4, 6);
     trunkGeo.translate(0, 3.2, 0);
-    var frondProto = new THREE.ConeGeometry(0.55, 5.4, 5);
-    frondProto.translate(0, 2.7, 0);
+    var frondProto = new THREE.ConeGeometry(0.5, 5.6, 5, 6);
+    frondProto.translate(0, 2.8, 0);
+    // flatten each cone into a leaf blade that arches out and droops at the tip
+    var fpa = frondProto.attributes.position;
+    for (var fv = 0; fv < fpa.count; fv++) {
+      var ft = fpa.getY(fv) / 5.6;
+      fpa.setX(fv, fpa.getX(fv) * 1.55 * (1 - ft * 0.55));
+      fpa.setZ(fv, fpa.getZ(fv) * 0.26 + ft * ft * 1.7);
+    }
+    frondProto.computeVertexNormals();
     var crownGeo = frondProto;
     if (THREE.BufferGeometryUtils && THREE.BufferGeometryUtils.mergeGeometries) {
       var fronds = [];
-      for (var i = 0; i < 6; i++) {
+      for (var i = 0; i < 10; i++) {
         var f = frondProto.clone();
-        var m = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rand(0.9, 1.25), (i / 6) * Math.PI * 2, 0, "YXZ"));
+        var m = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rand(0.75, 1.3), (i / 10) * Math.PI * 2 + rand(-0.15, 0.15), 0, "YXZ"));
         f.applyMatrix4(m);
         fronds.push(f);
       }
@@ -3418,7 +3478,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       for (var s = 0; s < 7; s++) { g.strokeStyle = "rgba(70,45,20," + (0.08 + Math.random() * 0.1) + ")"; g.lineWidth = 1.2; g.beginPath(); var gy = p + 5 + Math.random() * 24; g.moveTo(0, gy); g.bezierCurveTo(80, gy + 3, 170, gy - 3, 256, gy + 2); g.stroke(); }
       g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(Math.random() * 256, p, 2, 32);
     }
-    var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 4); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+    var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 4); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXANISO; return t;
   }
   function paintingTexture(v) {
     var c = document.createElement("canvas"); c.width = 160; c.height = 110;
@@ -4515,6 +4575,9 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     sunSprite.position.set(focus.x + Math.cos(sunAz) * 620, Math.max(elev, -0.25) * 620, focus.z - 320);
     sunSprite.material.color.setHSL(0.11, 0.75, 0.72);
     sunSprite.material.opacity = clamp(elev * 2 + 0.35, 0, 1);
+    skyUniforms.sunDir.value.set(Math.cos(sunAz) * 620, Math.max(elev, -0.25) * 620, -320).normalize();
+    skyUniforms.sunStr.value = clamp(elev * 3, 0, 1) * (0.7 + duskF * 0.6);
+    skyUniforms.sunTint.value.setRGB(1.0, 0.86 - duskF * 0.26, 0.62 - duskF * 0.3);
     starMat.opacity = clamp(0.9 - dayF * 1.4, 0, 0.9);
     stars.position.set(focus.x, 0, focus.z);
     var nightF = 1 - dayF;
@@ -5096,6 +5159,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         pos.array[i * 3 + 2] = Math.sin(bx * 0.05 + tNow * 1.1) * Math.cos(by * 0.06 + tNow * 0.8) * 0.55;
       }
       pos.needsUpdate = true;
+      oceanMat.bumpMap.offset.set(tNow * 0.012, tNow * 0.007);
 
       // marker pulse
       [markerStory, markerRace, markerTaxi, markerTarget, raceCpMarker].forEach(function (mk) {

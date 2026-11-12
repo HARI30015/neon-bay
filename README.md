@@ -65,3 +65,7 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
   and BACKPACK). Settings (top-right gear): Sound, Camera, Graphics and City
   Time speed.
 - Three jobs, cash and respect, wanted stars, day-night cycle.
+- High-end graphics: a real sun disc with glow and haze in the sky,
+  sharper textures throughout (MAXANISO), 2048px shadows, bump-mapped
+  512px paving, asphalt, sand and ocean (with animated ripples), and
+  fuller palm fronds.
