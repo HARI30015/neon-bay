@@ -73,3 +73,8 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
   lamps, neon, car LEDs and windows at night, sky reflections on
   glass, sea and paint, and a film look. Falls back to High by
   itself if the device can't do it.
+- Unity graphics port: GLSL shader water with moving waves, sun
+  glitter, shoreline foam and clear-to-deep colour, real glass on
+  buildings, the spire and the supercar, a procedural sky with sun
+  and moon, lit windows and warm lamp lights at night, and PBR
+  materials throughout.
