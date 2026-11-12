@@ -69,3 +69,7 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
   sharper textures throughout (MAXANISO), 2048px shadows, bump-mapped
   512px paving, asphalt, sand and ocean (with animated ripples), and
   fuller palm fronds.
+- Ultra graphics mode (Settings → Graphics → Ultra): HDR glow on
+  lamps, neon, car LEDs and windows at night, sky reflections on
+  glass, sea and paint, and a film look. Falls back to High by
+  itself if the device can't do it.
