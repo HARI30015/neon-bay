@@ -86,3 +86,8 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
   Out. When signed in, cash, respect, completed jobs and profile
   auto-save to Firestore users/{uid} and load back on the next
   sign-in. Login is never forced; the game still plays without it.
+- Performance pass — less lag: resolution is capped, Balanced is
+  the new default graphics level (1024 shadows, medium water),
+  Smooth is cheapest and High is the old full look, and if the
+  frame rate stays low the game lowers the resolution and then
+  steps one graphics level down by itself, with a small message.

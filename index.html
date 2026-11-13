@@ -663,11 +663,12 @@
     <div class="set-row">
       <div class="set-label">GRAPHICS<b>Picture quality</b></div>
       <div class="set-opts" id="set-graphics">
-        <button class="set-opt" type="button" data-set="graphics" data-val="high">High — sharp + shadows</button>
-        <button class="set-opt" type="button" data-set="graphics" data-val="smooth">Smooth — faster, no shadows</button>
+        <button class="set-opt" type="button" data-set="graphics" data-val="high">High — sharp + full shadows</button>
+        <button class="set-opt" type="button" data-set="graphics" data-val="balanced">Balanced — medium, smaller shadows</button>
+        <button class="set-opt" type="button" data-set="graphics" data-val="smooth">Smooth — fastest, no shadows</button>
         <button class="set-opt" type="button" data-set="graphics" data-val="ultra">Ultra — glow, sky reflections, film look (strong GPU)</button>
       </div>
-      <p class="set-note">Pick Smooth if the game feels slow on your phone.</p>
+      <p class="set-note">Balanced is the standard. If the game stays slow, it steps the picture down by itself to keep things smooth — raise it back here any time.</p>
     </div>
     <div class="set-row">
       <div class="set-label">CITY TIME<b>How fast the day passes</b></div>
@@ -822,7 +823,10 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // ---------- Renderer / scene ----------
   var canvas = document.getElementById("game");
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  // Pixel ratio is capped at 1.25 (applyQuality sets the exact value per
+  // graphics level): rendering every phone pixel at full device ratio is
+  // the single biggest cause of lag, and 1.25 still looks sharp.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
   var lowPowerGL = false;
   // Adaptive quality: software renderers (e.g. headless SwiftShader) get a
   // lighter load so the page still captures/interacts; real GPUs keep full quality.
@@ -844,7 +848,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   renderer.toneMappingExposure = 1.05;
   // sharper textures at grazing angles (roads, pavements, facades)
   var MAXANISO = 8;
-  try { MAXANISO = Math.max(4, Math.min(8, renderer.capabilities.getMaxAnisotropy())); } catch (e) {}
+  try { MAXANISO = lowPowerGL ? 2 : Math.max(4, Math.min(8, renderer.capabilities.getMaxAnisotropy())); } catch (e) {}
 
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87b5d9);
@@ -1174,6 +1178,89 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var ocean = new THREE.Mesh(new THREE.PlaneGeometry(900, 320, 56, 20), oceanMat);
   ocean.rotation.x = -Math.PI / 2; ocean.position.set(0, 0.35, BEACH_Z + 60 + 150);
   scene.add(ocean);
+
+  // Cheaper versions of the same GLSL sea for the lower graphics levels —
+  // same colours, same sun path, same shoreline foam family, just fewer
+  // wave layers per pixel. Balanced (level 1) drops the glitter sparkle
+  // and the second ripple; Smooth (level 0) also drops the fine vertex
+  // wave, the animated foam lap and the tight sun glitter, keeping one
+  // broad sun sheen. High / Ultra keep the full shader (level 2).
+  var waterVertCheap = [
+    "uniform float uTime;",
+    "varying vec3 vWorld; varying vec3 vNorm; varying float vShore;",
+    "float wheight(vec2 p){",
+    "  return sin(p.x * 0.05 + uTime * 0.9) * 0.20 + sin(p.y * 0.09 + p.x * 0.03 - uTime * 1.3) * 0.13;",
+    "}",
+    "void main(){",
+    "  vec3 pos = position;",
+    "  float h = wheight(pos.xy);",
+    "  float e = 1.6;",
+    "  float hx = wheight(pos.xy + vec2(e, 0.0)) - h;",
+    "  float hy = wheight(pos.xy + vec2(0.0, e)) - h;",
+    "  pos.z += h;",
+    "  vNorm = normalize(mat3(modelMatrix) * vec3(-hx / e, -hy / e, 1.0));",
+    "  vShore = clamp((160.0 - pos.y) / 110.0, 0.0, 1.0);",
+    "  vec4 wp = modelMatrix * vec4(pos, 1.0);",
+    "  vWorld = wp.xyz;",
+    "  gl_Position = projectionMatrix * viewMatrix * wp;",
+    "}"
+  ].join("\n");
+  var waterFragMed = [
+    "uniform float uTime; uniform vec3 uSunDir; uniform vec3 uSunTint; uniform float uSunI; uniform float uNight;",
+    "uniform vec3 uSky; uniform vec3 uDeep; uniform vec3 uShallow;",
+    "varying vec3 vWorld; varying vec3 vNorm; varying float vShore;",
+    "void main(){",
+    "  vec3 V = normalize(cameraPosition - vWorld);",
+    "  vec3 N = normalize(vNorm);",
+    "  float r1 = sin(vWorld.x * 1.35 + uTime * 1.7) * sin(vWorld.z * 1.15 - uTime * 1.3);",
+    "  N = normalize(N + vec3(r1 * 0.06, 0.0, r1 * 0.045));",
+    "  vec3 base = mix(uShallow, uDeep, smoothstep(0.02, 0.55, vShore));",
+    "  float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);",
+    "  vec3 col = mix(base, uSky * 0.85, 0.18 + fres * 0.55);",
+    "  vec3 H = normalize(uSunDir + V);",
+    "  float ndh = max(dot(N, H), 0.0);",
+    "  col += uSunTint * (pow(ndh, 340.0) * 2.4 + pow(ndh, 48.0) * 0.35) * uSunI;",
+    "  float lap = sin(vShore * 46.0 - uTime * 1.4 + sin(vWorld.x * 0.35) * 1.6) * 0.5 + 0.5;",
+    "  float foam = smoothstep(0.16, 0.015, vShore) * (0.35 + lap * 0.5);",
+    "  col = mix(col, vec3(0.92, 0.97, 1.0), foam * (1.0 - uNight * 0.55));",
+    "  col *= 1.0 - uNight * 0.82;",
+    "  gl_FragColor = vec4(col, 0.96);",
+    "}"
+  ].join("\n");
+  var waterFragCheap = [
+    "uniform float uTime; uniform vec3 uSunDir; uniform vec3 uSunTint; uniform float uSunI; uniform float uNight;",
+    "uniform vec3 uSky; uniform vec3 uDeep; uniform vec3 uShallow;",
+    "varying vec3 vWorld; varying vec3 vNorm; varying float vShore;",
+    "void main(){",
+    "  vec3 V = normalize(cameraPosition - vWorld);",
+    "  vec3 N = normalize(vNorm);",
+    "  vec3 base = mix(uShallow, uDeep, smoothstep(0.02, 0.55, vShore));",
+    "  float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);",
+    "  vec3 col = mix(base, uSky * 0.85, 0.18 + fres * 0.55);",
+    "  vec3 H = normalize(uSunDir + V);",
+    "  float ndh = max(dot(N, H), 0.0);",
+    "  col += uSunTint * pow(ndh, 48.0) * 0.35 * uSunI;",
+    "  float foam = smoothstep(0.16, 0.015, vShore) * 0.5;",
+    "  col = mix(col, vec3(0.92, 0.97, 1.0), foam * (1.0 - uNight * 0.55));",
+    "  col *= 1.0 - uNight * 0.82;",
+    "  gl_FragColor = vec4(col, 0.96);",
+    "}"
+  ].join("\n");
+  var waterLevel = 2;
+  function setWaterLevel(level) {
+    if (level === waterLevel) return;
+    waterLevel = level;
+    var nm = new THREE.ShaderMaterial({
+      uniforms: waterUniforms,
+      vertexShader: level === 0 ? waterVertCheap : waterVert,
+      fragmentShader: level === 0 ? waterFragCheap : (level === 1 ? waterFragMed : waterFrag),
+      transparent: true
+    });
+    var old = ocean.material;
+    ocean.material = nm;
+    oceanMat = nm;
+    if (old && old !== nm) old.dispose();
+  }
 
   // Sun/moon disc sprite in the sky
   function discTexture() {
@@ -2790,6 +2877,17 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     lampPool.push(lampLightObj);
     lampLights.push({ light: lampLightObj, base: 26 });
   }
+  // Lower graphics levels run fewer of these real lamp lights — every
+  // point light costs every lit pixel, so Smooth keeps 3 and Balanced 4
+  // of the 6. The instanced bulbs and the glow points stay either way,
+  // so the street still reads as lit; only the thrown light pools shrink.
+  function setLampLightCount(n) {
+    for (var lsi = 0; lsi < lampPool.length; lsi++) {
+      var lon = lsi < n;
+      lampPool[lsi].userData.lampOn = lon;
+      if (!lon) lampPool[lsi].intensity = 0;
+    }
+  }
 
   // Drifting clouds + floating neon dust for depth in the sky and streets
   var cloudGroup = new THREE.Group(); scene.add(cloudGroup);
@@ -4185,7 +4283,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   // ---------- Audio (synthesized, created on first tap) ----------
   var AC = null, engineOsc = null, engineGain = null, skidOsc = null, skidGain = null;
   // Settings (session-only, changed from the gear button top-right)
-  var soundOn = true, timeScale = 1, graphicsQ = "high";
+  var soundOn = true, timeScale = 1, graphicsQ = "balanced";
   function initAudio() {
     if (AC) { if (AC.state === "suspended") AC.resume(); return; }
     try {
@@ -4519,8 +4617,9 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       setCamView(i);   // not in the car: apply the normal view instead
     }
   }
-  // Settings → Graphics: High keeps full resolution + soft shadows;
-  // Smooth caps the resolution and turns shadows off for weaker phones.
+  // Settings → Graphics levels are applied by applyQuality() just after
+  // the Ultra block below: Smooth / Balanced / High / Ultra, cheapest to
+  // richest. New players start on Balanced.
   // ---------- ULTRA graphics: HDR post-processing + sky reflections ----------
   // Optional Settings -> Graphics -> Ultra. The scene is drawn into a 16-bit
   // HDR buffer (4x multisampled), then: glow (bloom) on lamps, neon, car LEDs and
@@ -4660,16 +4759,46 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     renderer.render(scene, camera);
   }
 
+  // ---------- Graphics levels: what each one actually costs ----------
+  // Smooth:   shadows off, 3 lamp lights, cheapest water, lowest resolution.
+  // Balanced: 1024 shadow map, 4 lamp lights, medium water, capped resolution.
+  // High:     2048 shadow map, all 6 lamp lights, full water — the old look.
+  // Ultra:    High plus the HDR glow + sky-reflection pipeline, unchanged.
+  // Resolution is capped at 1.25x on desktop and 1.0x on touch devices
+  // (0.6x on software renderers); the adaptive pass near the main loop
+  // can scale it down further before it ever drops a level.
+  function prFor(q) {
+    if (lowPowerGL) return 0.6;
+    var dpr = window.devicePixelRatio || 1;
+    var coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    if (q === "smooth") return Math.min(dpr, coarse ? 0.85 : 1);
+    return Math.min(dpr, coarse ? 1 : 1.25);
+  }
+  function setShadowSize(size) {
+    if (sun.shadow.mapSize.x === size && sun.shadow.mapSize.y === size) return;
+    sun.shadow.mapSize.set(size, size);
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
   function applyQuality(q) {
     graphicsQ = q;
     if (q === "ultra" && !ultraEnable()) { graphicsQ = q = "high"; toast("ULTRA NOT AVAILABLE", "This device can't do HDR glow, staying on High"); }
     if (q !== "ultra") ultraDisable();
-    if (q === "high" || q === "ultra") {
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-      renderer.shadowMap.enabled = true;
-    } else {
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1));
+    var rs = (typeof perf !== "undefined" && perf) ? perf.resScale : 1;
+    renderer.setPixelRatio(prFor(q) * rs);
+    if (q === "smooth") {
       renderer.shadowMap.enabled = false;
+      setLampLightCount(3);
+      setWaterLevel(0);
+    } else if (q === "balanced") {
+      renderer.shadowMap.enabled = true;
+      setShadowSize(1024);
+      setLampLightCount(4);
+      setWaterLevel(1);
+    } else {
+      renderer.shadowMap.enabled = true;
+      setShadowSize(2048);
+      setLampLightCount(6);
+      setWaterLevel(2);
     }
     scene.traverse(function (o) {
       if (o.material) {
@@ -4849,7 +4978,13 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var sunCol = new THREE.Color();
   var sunPale = new THREE.Color(1.0, 0.95, 0.87), sunDuskCol = new THREE.Color(1.0, 0.55, 0.28);
   var skyTopDay = new THREE.Color(0x2f6cb3), skyHorDay = new THREE.Color(0xd9e9f4);
-  function updateSky() {
+  // Reused scratch colours: updateSky runs every frame, so it must not
+  // allocate fresh Color objects (that was steady garbage every frame).
+  var _skyTmpA = new THREE.Color(0x2e5a8f), _skyTmpB = new THREE.Color(0x8fb6d9),
+      _skyTmpC = new THREE.Color(0x8fa8ba), _skyTmpW = new THREE.Color(0xffffff);
+  var lastWinEm = -1;                       // lit-window emissive, last value actually applied
+  var lampParkT = 0, lampParkX = 1e9, lampParkZ = 0, lampsWereOn = false;
+  function updateSky(dt) {
     var h = G.timeH;
     // sun elevation: peak at 13:00, below horizon at night
     var ang = ((h - 6) / 12) * Math.PI;         // 6h -> 0, 18h -> PI
@@ -4858,13 +4993,20 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var duskF = clamp(1 - Math.abs(elev) * 3, 0, 1) * (h > 5 && h < 20 ? 1 : 0);
     skyCol.copy(skyNight).lerp(skyDay, dayF).lerp(skyDusk, duskF * 0.5);
     scene.background.copy(skyCol);
-    scene.fog.color.copy(skyCol).lerp(new THREE.Color(0xffffff), dayF * 0.25);
+    scene.fog.color.copy(skyCol).lerp(_skyTmpW, dayF * 0.25);
     // Natural sky dome: deep blue up top, pale hazy horizon, warm tint only at dusk
-    skyUniforms.topColor.value.copy(skyNight).lerp(skyTopDay, dayF).lerp(new THREE.Color(0x2e5a8f), duskF * 0.72);
-    skyUniforms.horizonColor.value.copy(skyNight).lerp(skyHorDay, dayF).lerp(new THREE.Color(0x8fb6d9), duskF * 0.62);
-    skyUniforms.bottomColor.value.copy(skyNight).lerp(new THREE.Color(0x8fa8ba), dayF);
+    skyUniforms.topColor.value.copy(skyNight).lerp(skyTopDay, dayF).lerp(_skyTmpA, duskF * 0.72);
+    skyUniforms.horizonColor.value.copy(skyNight).lerp(skyHorDay, dayF).lerp(_skyTmpB, duskF * 0.62);
+    skyUniforms.bottomColor.value.copy(skyNight).lerp(_skyTmpC, dayF);
     skyDome.position.set(camera.position.x, 0, camera.position.z);
-    windowMats.forEach(function (wm) { wm.emissiveIntensity = 0.04 + (1 - dayF) * 0.38; });
+    // Lit windows: the emissive value moves with the day cycle, but only
+    // push it into the materials when it has actually changed a touch —
+    // most frames it is identical, and touching materials is not free.
+    var winEm = 0.04 + (1 - dayF) * 0.38;
+    if (Math.abs(winEm - lastWinEm) > 0.01) {
+      lastWinEm = winEm;
+      windowMats.forEach(function (wm) { wm.emissiveIntensity = winEm; });
+    }
     lampGlowMat.opacity = (1 - dayF) * 0.8;
     cloudGroup.children.forEach(function (sp) { sp.material.opacity = 0.04 + dayF * 0.15; });
     dustMat.opacity = 0.05 + (1 - dayF) * 0.12;
@@ -4913,23 +5055,36 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     starMat.opacity = clamp(0.9 - dayF * 1.4, 0, 0.9);
     stars.position.set(focus.x, 0, focus.z);
     var nightF = 1 - dayF;
-    // park the pooled lamp lights on the lamp heads nearest the player
-    if (lampPool.length && lampXforms.length) {
-      var usedLamp = {};
-      for (var li = 0; li < lampPool.length; li++) {
-        var bestD = 1e12, bestI = -1;
-        for (var lj = 0; lj < lampXforms.length; lj++) {
-          if (usedLamp[lj]) continue;
-          var ldx = lampXforms[lj].x - focus.x, ldz = lampXforms[lj].z - focus.z;
-          var ld2 = ldx * ldx + ldz * ldz;
-          if (ld2 < bestD) { bestD = ld2; bestI = lj; }
+    // Park the pooled lamp lights on the lamp heads nearest the player —
+    // but only after dark, and only re-pick them when the player has
+    // moved a few steps or half a second has passed. The old code ran
+    // the full nearest-lamp search on every frame, day and night.
+    if (nightF > 0.02) {
+      lampParkT -= dt || 0;
+      var lpdx = focus.x - lampParkX, lpdz = focus.z - lampParkZ;
+      if ((lampParkT <= 0 || lpdx * lpdx + lpdz * lpdz > 36) && lampPool.length && lampXforms.length) {
+        lampParkT = 0.5; lampParkX = focus.x; lampParkZ = focus.z;
+        var usedLamp = {};
+        for (var li = 0; li < lampPool.length; li++) {
+          if (lampPool[li].userData.lampOn === false) continue;
+          var bestD = 1e12, bestI = -1;
+          for (var lj = 0; lj < lampXforms.length; lj++) {
+            if (usedLamp[lj]) continue;
+            var ldx = lampXforms[lj].x - focus.x, ldz = lampXforms[lj].z - focus.z;
+            var ld2 = ldx * ldx + ldz * ldz;
+            if (ld2 < bestD) { bestD = ld2; bestI = lj; }
+          }
+          if (bestI >= 0) { usedLamp[bestI] = 1; lampPool[li].position.set(lampXforms[bestI].x, 5.4, lampXforms[bestI].z); }
         }
-        if (bestI >= 0) { usedLamp[bestI] = 1; lampPool[li].position.set(lampXforms[bestI].x, 5.4, lampXforms[bestI].z); }
       }
+      lampLights.forEach(function (L) {
+        if (L.light) L.light.intensity = L.light.userData.lampOn === false ? 0 : L.base * nightF;
+      });
+      lampsWereOn = true;
+    } else if (lampsWereOn) {
+      lampsWereOn = false;
+      lampLights.forEach(function (L) { if (L.light) L.light.intensity = 0; });
     }
-    lampLights.forEach(function (L) {
-      if (L.light) L.light.intensity = L.base * nightF;
-    });
     lampBulbMat.emissiveIntensity = 0.15 + nightF * 2.2;
     playerVehicles.forEach(function (v) {
       if (v.mesh.userData.beam) v.mesh.userData.beam.intensity = nightF * 110;
@@ -5479,19 +5634,97 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     camera.lookAt(0, 2.2, 50);
   }
 
+  // ---------- Adaptive smoothness ----------
+  // Watches the real frame rate once the game is running. If it stays
+  // low for a few seconds, the render resolution steps down first
+  // (cheaper than dropping frames), and only then does the graphics
+  // level drop one step — each time with a small plain-words toast.
+  // Picking a level in Settings re-arms it from full resolution.
+  var perf = { resScale: 1, slowAcc: 0, coolT: 0 };
+  function stepDownQuality() {
+    if (perf.resScale > 0.9) {
+      perf.resScale = 0.85;
+      renderer.setPixelRatio(prFor(graphicsQ) * perf.resScale);
+      toast("KEPT IT SMOOTH", "Lowered the picture resolution a little so the game runs smoother");
+      return;
+    }
+    if (perf.resScale > 0.71) {
+      perf.resScale = 0.7;
+      renderer.setPixelRatio(prFor(graphicsQ) * perf.resScale);
+      toast("KEPT IT SMOOTH", "Lowered the picture resolution a little more for smoothness");
+      return;
+    }
+    var order = ["smooth", "balanced", "high", "ultra"];
+    var idx = order.indexOf(graphicsQ);
+    if (idx > 0) {
+      perf.resScale = 1;
+      applyQuality(order[idx - 1]);
+      refreshSettings();
+      toast("GRAPHICS — " + graphicsQ.toUpperCase(), "Dropped one level to keep the game smooth — raise it back any time in Settings");
+    }
+  }
+  function perfFrame(rawDt) {
+    if (!G.started || G.over || rawDt <= 0 || rawDt > 0.25) return;
+    if (perf.coolT > 0) { perf.coolT -= rawDt; return; }
+    if (rawDt > 1 / 38) perf.slowAcc += rawDt;
+    else perf.slowAcc = Math.max(0, perf.slowAcc - rawDt * 2);
+    if (perf.slowAcc > 2.5) { perf.slowAcc = 0; perf.coolT = 8; stepDownQuality(); }
+  }
+
+  // ---------- Shadow casters: only near the player ----------
+  // The sun's shadow camera only covers about 85 units around the
+  // player, so static scenery further away than ~130 units cannot put
+  // a shadow on screen anyway — those meshes stop casting (they still
+  // receive). Anything that moves — the hero, the player's vehicles,
+  // traffic, people — always keeps its shadow. Rechecked about once a
+  // second, or whenever the player has moved a few steps.
+  var shadowCasters = [];
+  var shadowCullT = 0, shadowCullX = 1e9, shadowCullZ = 0;
+  (function collectShadowCasters() {
+    function keepShadow(root) { if (root) root.traverse(function (o) { o.userData.keepShadow = true; }); }
+    keepShadow(hero);
+    playerVehicles.forEach(function (v) { keepShadow(v.mesh); });
+    traffic.forEach(function (t) { keepShadow(t.mesh); });
+    peds.forEach(function (p) { keepShadow(p.mesh); });
+    scene.updateMatrixWorld(true);
+    var wp = new THREE.Vector3();
+    scene.traverse(function (o) {
+      if (o.isMesh && o.castShadow && !o.userData.keepShadow) {
+        o.getWorldPosition(wp);
+        shadowCasters.push({ m: o, x: wp.x, z: wp.z });
+      }
+    });
+  })();
+  function updateShadowCasters(dt) {
+    if (!renderer.shadowMap.enabled) return;
+    shadowCullT -= dt;
+    var f = G.mode === "car" && G.drivingVehicle ? G.drivingVehicle.mesh.position : heroState.pos;
+    var dx = f.x - shadowCullX, dz = f.z - shadowCullZ;
+    if (shadowCullT > 0 && dx * dx + dz * dz < 25) return;
+    shadowCullT = 1; shadowCullX = f.x; shadowCullZ = f.z;
+    for (var i = 0; i < shadowCasters.length; i++) {
+      var sc = shadowCasters[i];
+      var ddx = sc.x - f.x, ddz = sc.z - f.z;
+      sc.m.castShadow = ddx * ddx + ddz * ddz < 16900;   // 130 units
+    }
+  }
+
   // ---------- Main loop ----------
   var lastT = performance.now();
   function frame(now) {
     requestAnimationFrame(frame);
     try {
-      var dt = Math.min((now - lastT) / 1000, 0.05);
+      var rawDt = (now - lastT) / 1000;
+      var dt = Math.min(rawDt, 0.05);
       lastT = now;
       var tNow = now / 1000;
 
       // clock: 1 real second = 1 game minute (× the Settings time speed)
       G.timeH += dt / 60 * timeScale;
       if (G.timeH >= 24) G.timeH -= 24;
-      updateSky();
+      updateSky(dt);
+      updateShadowCasters(dt);
+      perfFrame(rawDt);
 
       // clouds drift, foam breathes at the shoreline
       cloudGroup.children.forEach(function (sp, ci) { sp.position.x += dt * (1.2 + ci * 0.12); if (sp.position.x > 460) sp.position.x = -460; });
@@ -5576,6 +5809,12 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       showErr(err.message);
     }
   }
+  // New players start on Balanced: the capped resolution, 1024 shadows,
+  // medium water and 4 lamp lights are set here, before the first frame
+  // (software renderers keep their extra-low 0.6 resolution via prFor).
+  // Settings can raise it to High or Ultra at any time, and the adaptive
+  // pass steps it down by itself if the frame rate stays low.
+  applyQuality("balanced");
   requestAnimationFrame(frame);
 
   // ---------- Start / reset ----------
@@ -5992,10 +6231,13 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         if (drivingCarView()) { camSnap = true; refreshViewLabel(); }
         toast(CAR_VIEWS[carView].toUpperCase(), drivingCarView() ? "Camera angle set in Settings" : "Used when you drive the supercar");
       } else if (kind === "graphics") {
+        perf.resScale = 1; perf.slowAcc = 0; perf.coolT = 0;   // a hand-picked level starts again from full resolution
         applyQuality(val);
         if (graphicsQ === "ultra") toast("GRAPHICS — ULTRA", "HDR glow, sky reflections and film look");
         else if (val === "ultra") toast("ULTRA NOT AVAILABLE", "This device can't do HDR glow, staying on High");
-        else toast(graphicsQ === "high" ? "GRAPHICS — HIGH" : "GRAPHICS — SMOOTH", graphicsQ === "high" ? "Sharp picture with shadows" : "Faster picture, shadows off");
+        else if (graphicsQ === "balanced") toast("GRAPHICS — BALANCED", "Medium picture, smaller shadows — the smooth standard");
+        else if (graphicsQ === "smooth") toast("GRAPHICS — SMOOTH", "Fastest picture, shadows off");
+        else toast("GRAPHICS — HIGH", "Sharp picture with full shadows");
       } else if (kind === "time") {
         timeScale = parseInt(val, 10);
         toast(timeScale === 0 ? "CITY TIME PAUSED" : (timeScale === 1 ? "CITY TIME — NORMAL" : "CITY TIME — FAST ×6"), "How fast the day passes");
