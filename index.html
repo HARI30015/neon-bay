@@ -1854,11 +1854,196 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var pathMatShared = null;
   function getPathMat(){ if(!pathMatShared){ var pt=groundTexture("#d6c9ae","rgba(160,145,115,0.6)",true); pt.repeat.set(4,1); pathMatShared=new THREE.MeshStandardMaterial({map:pt, roughness:0.95}); } return pathMatShared; }
 
+  // ---------- Detailed glass towers (Unity BuildingShape + Tex port) ----------
+  // The tall towers are real geometry now, like the Unity preview building:
+  // a solid core behind RECESSED dark-blue glass ribbons, light concrete
+  // floor slabs that overhang the glass line, corner pillars, thin mullions,
+  // railed balconies on the street face, a parapet and roof plant boxes.
+  // All the concrete / glass / metal parts are merged into three meshes per
+  // tower, so the detail costs almost no extra draw calls. The glass uses a
+  // 4x4-pane atlas in the style of Unity's Tex.GlassAtlas: sky-gradient
+  // panes, some half-drawn blinds, and an emissive twin whose lit rooms
+  // glow after dark through the shared windowMats night cycle.
+  function tHash(a, b, c) {
+    var h = (Math.imul(a | 0, 73856093) ^ Math.imul(b | 0, 19349663) ^ Math.imul(c | 0, 83492791)) | 0;
+    h = Math.imul(h ^ (h >> 13), 1274126177);
+    return ((h ^ (h >> 16)) & 0xffff) / 65535;
+  }
+  function GeoBucket() { this.pos = []; this.nor = []; this.uv = []; this.idx = []; this.n = 0; }
+  GeoBucket.prototype.add = function (geo, px, py, pz, ry, us, vs, uo, vo) {
+    var m = new THREE.Matrix4();
+    if (ry) m.makeRotationY(ry);
+    m.setPosition(px, py, pz);
+    var nm = new THREE.Matrix3().getNormalMatrix(m);
+    var p = geo.attributes.position, nrm = geo.attributes.normal, u = geo.attributes.uv, ix = geo.index;
+    var v = new THREE.Vector3(), nv = new THREE.Vector3();
+    for (var i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(m);
+      this.pos.push(v.x, v.y, v.z);
+      nv.fromBufferAttribute(nrm, i).applyMatrix3(nm).normalize();
+      this.nor.push(nv.x, nv.y, nv.z);
+      this.uv.push((u ? u.getX(i) : 0) * (us == null ? 1 : us) + (uo || 0), (u ? u.getY(i) : 0) * (vs == null ? 1 : vs) + (vo || 0));
+    }
+    if (ix) { for (var j = 0; j < ix.count; j++) this.idx.push(ix.getX(j) + this.n); }
+    else { for (var j2 = 0; j2 < p.count; j2++) this.idx.push(j2 + this.n); }
+    this.n += p.count;
+  };
+  GeoBucket.prototype.addBox = function (sx, sy, sz, cx, cy, cz) {
+    this.add(new THREE.BoxGeometry(sx, sy, sz), cx, cy, cz, 0);
+  };
+  GeoBucket.prototype.build = function () {
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(this.pos, 3));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(this.nor, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(this.uv, 2));
+    g.setIndex(this.idx);
+    return g;
+  };
+  var towerGlassCache = null;
+  function towerGlassTextures() {
+    if (towerGlassCache) return towerGlassCache;
+    var S = 256, CELL = 64;
+    var ca = document.createElement("canvas"); ca.width = ca.height = S;
+    var ce = document.createElement("canvas"); ce.width = ce.height = S;
+    var ga = ca.getContext("2d"), ge = ce.getContext("2d");
+    var ia = ga.createImageData(S, S), ie = ge.createImageData(S, S);
+    for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) {
+      var cx = (x / CELL) | 0, cy = (y / CELL) | 0, lx = x % CELL, ly = y % CELL;
+      var top = Math.pow(ly / CELL, 1.6);                       // darker low in the pane, sky at the top
+      var r = 0.03 + 0.21 * top, gg = 0.05 + 0.31 * top, b = 0.08 + 0.42 * top;
+      var nz = (tHash(x, y, 21) - 0.5) * 0.02; r += nz; gg += nz; b += nz;
+      var er = 0, eg = 0, eb = 0;
+      if (tHash(cx, cy, 31) < 0.34) {                           // half-drawn blinds
+        var bl = (ly > 10 ? 0.65 : 0.2) + (ly % 5 < 2 ? 0.08 : 0);
+        r += (0.62 - r) * bl; gg += (0.60 - gg) * bl; b += (0.56 - b) * bl;
+      }
+      if (tHash(cx, cy, 41) < 0.48) {                           // a lit room after dark
+        var br = 0.35 + tHash(cx, cy, 51) * 0.65, tv = tHash(cx, cy, 61) > 0.9;
+        er = (tv ? 0.45 : 1.0) * br; eg = (tv ? 0.6 : 0.76) * br; eb = (tv ? 1.0 : 0.42) * br;
+        r += er * 0.18; gg += eg * 0.18; b += eb * 0.18;
+      }
+      if (lx < 2 || lx >= CELL - 2 || ly < 2 || ly >= CELL - 2) { r = 0.05; gg = 0.05; b = 0.06; er = eg = eb = 0; }  // pane frame
+      var o = (y * S + x) * 4;
+      ia.data[o] = clamp(r, 0, 1) * 255; ia.data[o + 1] = clamp(gg, 0, 1) * 255; ia.data[o + 2] = clamp(b, 0, 1) * 255; ia.data[o + 3] = 255;
+      ie.data[o] = clamp(er, 0, 1) * 255; ie.data[o + 1] = clamp(eg, 0, 1) * 255; ie.data[o + 2] = clamp(eb, 0, 1) * 255; ie.data[o + 3] = 255;
+    }
+    ga.putImageData(ia, 0, 0); ge.putImageData(ie, 0, 0);
+    var ta = new THREE.CanvasTexture(ca); ta.colorSpace = THREE.SRGBColorSpace; ta.wrapS = ta.wrapT = THREE.RepeatWrapping; ta.anisotropy = MAXANISO;
+    var te = new THREE.CanvasTexture(ce); te.colorSpace = THREE.SRGBColorSpace; te.wrapS = te.wrapT = THREE.RepeatWrapping; te.anisotropy = MAXANISO;
+    towerGlassCache = { albedo: ta, emissive: te };
+    return towerGlassCache;
+  }
+  function detailedTowerGeos(w, d, H, levels, seed) {
+    var conc = new GeoBucket(), gls = new GeoBucket(), met = new GeoBucket();
+    var hw = w / 2, hd = d / 2;
+    var GroundH = 4.05, fu = (H - GroundH) / (levels - 1);      // tall glazed ground floor, like the preview
+    function floorTop(i) { return GroundH + i * fu; }           // floorTop(levels-1) === H
+    conc.addBox(w - 0.5, H, d - 0.5, 0, H / 2, 0);              // solid core just behind the glass
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (s) { // corner pillars
+      conc.addBox(0.62, H, 0.62, s[0] * (hw - 0.1), H / 2, s[1] * (hd - 0.1));
+    });
+    conc.addBox(w + 0.5, 0.24, d + 0.5, 0, 0.12, 0);            // plinth slab
+    for (var si = 0; si < levels; si++) conc.addBox(w + 0.36, 0.34, d + 0.36, 0, floorTop(si), 0);  // overhanging floor slabs
+    var glassZ = hd - 0.02, glassX = hw - 0.02;                 // glass line, recessed behind slabs + pillars
+    for (var side = 0; side < 4; side++) {
+      var alongX = side < 2, sgn = (side % 2 === 0) ? 1 : -1;
+      var span = (alongX ? w : d) - 1.4;
+      var cells = Math.max(2, Math.round(span / 3.5));
+      for (var fi2 = 0; fi2 < levels; fi2++) {
+        var y0 = fi2 === 0 ? 0.35 : floorTop(fi2 - 1) + 0.36;
+        var y1 = fi2 === 0 ? GroundH - 0.2 : floorTop(fi2) - 0.36;
+        var row = Math.floor(tHash(fi2, side, seed) * 4) % 4;
+        var pg = new THREE.PlaneGeometry(span, y1 - y0), mid = (y0 + y1) / 2;
+        if (alongX) gls.add(pg, 0, mid, sgn * glassZ, sgn > 0 ? 0 : Math.PI, cells * 0.25, 0.25, 0, row * 0.25);
+        else gls.add(pg, sgn * glassX, mid, 0, sgn > 0 ? Math.PI / 2 : -Math.PI / 2, cells * 0.25, 0.25, 0, row * 0.25);
+      }
+      for (var mj = 0; mj <= cells; mj++) {                     // mullions standing proud of the glass
+        var p = -span / 2 + mj * span / cells;
+        if (alongX) conc.addBox(0.14, H - 0.4, 0.24, p, H / 2, sgn * (glassZ + 0.07));
+        else conc.addBox(0.24, H - 0.4, 0.14, sgn * (glassX + 0.07), H / 2, p);
+      }
+      if (side === 0) {                                         // balconies with rails, street face only
+        var cw = span / cells;
+        for (var bi2 = 2; bi2 < levels; bi2++) for (var bj = 0; bj < cells; bj++) {
+          if (tHash(bi2, bj, seed + 7) > 0.2) continue;         // about one bay in five, like the preview
+          var bcx = -span / 2 + (bj + 0.5) * cw, byy = floorTop(bi2 - 1);
+          conc.addBox(cw - 0.25, 0.14, 1.25, bcx, byy, glassZ + 0.64);
+          met.addBox(cw - 0.25, 0.05, 0.05, bcx, byy + 1.0, glassZ + 1.24);
+          met.addBox(cw - 0.25, 0.03, 0.03, bcx, byy + 0.22, glassZ + 1.24);
+          for (var bk = 0; bk <= 4; bk++) met.addBox(0.035, 1.0, 0.035, bcx - (cw - 0.25) / 2 + bk * (cw - 0.25) / 4, byy + 0.55, glassZ + 1.24);
+        }
+      }
+    }
+    var py = H + 0.45;                                          // parapet + roof plant
+    conc.addBox(w + 0.4, 0.9, 0.28, 0, py, hd + 0.1);
+    conc.addBox(w + 0.4, 0.9, 0.28, 0, py, -hd - 0.1);
+    conc.addBox(0.28, 0.9, d + 0.4, hw + 0.1, py, 0);
+    conc.addBox(0.28, 0.9, d + 0.4, -hw - 0.1, py, 0);
+    conc.addBox(w + 0.2, 0.2, d + 0.2, 0, H + 0.1, 0);
+    conc.addBox(3.2, 2.0, 3.0, -w * 0.25, H + 1.2, d * 0.15);   // stair core
+    met.addBox(2.4, 1.2, 1.8, w * 0.2, H + 0.8, -d * 0.2);      // AC units
+    met.addBox(1.6, 1.0, 1.6, w * 0.05, H + 0.7, d * 0.25);
+    met.addBox(0.12, 3.6, 0.12, w * 0.28, H + 2.0, d * 0.22);   // antenna mast
+    return { conc: conc.build(), gls: gls.build(), met: met.build() };
+  }
+  function buildTowerBlock(cx, cz) {
+    var group = new THREE.Group();
+    var levels = 11, H = levels * 3.12;                         // same height as the tower it replaces
+    var w = rand(17.5, 19.5), d = rand(14.5, 16);
+    var style = Math.floor(Math.random() * 4);
+    var seed = Math.round(cx * 3.1 + cz * 7.7);
+    var geos = detailedTowerGeos(w, d, H, levels, seed);
+    var wallTints = [0xdbdbd7, 0xc7b394, 0xdbdbd7, 0x575961];   // light render / warm stone / charcoal frames
+    var concMesh = new THREE.Mesh(geos.conc, mat(wallTints[style % 4], 0.8, 0.05));
+    concMesh.position.y = 0.22; concMesh.castShadow = true; concMesh.receiveShadow = true; group.add(concMesh);
+    var gt = towerGlassTextures();
+    var glassMatT = new THREE.MeshPhysicalMaterial({ map: gt.albedo, roughness: 0.08, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.06, envMap: carEnv(), envMapIntensity: 1.3, emissive: 0xffc98a, emissiveMap: gt.emissive, emissiveIntensity: 0.18 });
+    windowMats.push(glassMatT);
+    var glassMesh = new THREE.Mesh(geos.gls, glassMatT);
+    glassMesh.position.y = 0.22; glassMesh.castShadow = true; glassMesh.receiveShadow = true; group.add(glassMesh);
+    var metMesh = new THREE.Mesh(geos.met, mat(0x141518, 0.5, 0.7));
+    metMesh.position.y = 0.22; metMesh.castShadow = true; metMesh.receiveShadow = true; group.add(metMesh);
+    // entrance dressing from the Unity tower: wood cladding strip + dark canopy
+    group.add(box(w * 0.14, 4.0, 0.2, woodMat, -w * 0.3, 2.2, d / 2 + 0.45, false));
+    group.add(box(w * 0.5, 0.2, 2.2, darkMetalMat, 0, 3.9, d / 2 + 1.1, false));
+    // planters with shrubs flanking the entrance
+    [-3.3, 3.3].forEach(function (px2) {
+      group.add(box(1.15, 0.52, 0.55, woodDarkMat, px2, 0.5, d / 2 + 1.25, false));
+      var psh = new THREE.Mesh(new THREE.SphereGeometry(0.52, 8, 7), shrubMat);
+      psh.scale.y = 0.75; psh.position.set(px2, 0.95, d / 2 + 1.25); group.add(psh);
+    });
+    // landscaped grounds, same as the flats: lawn, brick path, shrubs, bike racks
+    var lawn = new THREE.Mesh(new THREE.PlaneGeometry(30, 9.5), getLawnMat());
+    lawn.rotation.x = -Math.PI / 2; lawn.position.set(0, 0.235, d / 2 + 6.2); lawn.receiveShadow = true; group.add(lawn);
+    var lawn2 = new THREE.Mesh(new THREE.PlaneGeometry(30, 6), getLawnMat());
+    lawn2.rotation.x = -Math.PI / 2; lawn2.position.set(0, 0.235, -d / 2 - 4.2); lawn2.receiveShadow = true; group.add(lawn2);
+    var path = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.06, 11), getPathMat());
+    path.position.set(0, 0.26, d / 2 + 5.4); path.receiveShadow = true; group.add(path);
+    var path2 = new THREE.Mesh(new THREE.BoxGeometry(28, 0.06, 2.6), getPathMat());
+    path2.position.set(0, 0.26, d / 2 + 9.8); path2.receiveShadow = true; group.add(path2);
+    for (var sh = 0; sh < 3; sh++) {
+      var shrub = new THREE.Mesh(new THREE.SphereGeometry(0.6, 7, 6), shrubMat);
+      shrub.scale.y = 0.72; shrub.position.set(-w / 2 + 4 + sh * 9, 0.55, d / 2 + 1.65); group.add(shrub);
+    }
+    var rackMat = mat(0xc8ccd2, 0.3, 0.85);
+    if (((cx / 44) + (cz / 44)) % 4 !== 0) rackMat = null;
+    for (var br = 0; rackMat && br < 5; br++) {
+      var hoop = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.035, 8, 16, Math.PI), rackMat);
+      hoop.position.set(-6 + br * 1.05, 0.28, d / 2 + 9.6);
+      hoop.castShadow = true; group.add(hoop);
+    }
+    addDoorway(group, 0, d / 2, "tower", "RESIDENCE", cx, cz);
+    addCollider(cx, cz, w / 2 + 0.6, d / 2 + 1.7);
+    group.position.set(cx, 0, cz);
+    scene.add(group);
+  }
+
   function buildBlock(cx, cz, isHotelRow) {
     var gxB = Math.round(cx / BLOCK), gzB = Math.round(cz / BLOCK);
     var archB = (gxB === -3 && gzB === -3) ? "spire" : ((gxB === 3 && gzB === -2) ? "heritage" : ((gxB + gzB) % 5 === 0 ? "tower" : (isHotelRow ? "hotel" : "modern")));
     if (archB === "spire") { buildSpireBlock(cx, cz); return; }
     if (archB === "heritage") { buildHeritageBlock(cx, cz); return; }
+    if (archB === "tower") { buildTowerBlock(cx, cz); return; }
     var group = new THREE.Group();
     // ONE wide low block per lot, like the photo — not tall towers, not 2 small houses
     var floors = archB === "tower" ? 11 : (Math.random() < 0.55 ? 4 : 5);
@@ -2720,16 +2905,111 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
 
   // ---------- Leafy street trees, hedges & grass verges (real streets have these everywhere) ----------
   (function leafyTrees() {
-    var trunkG = new THREE.CylinderGeometry(0.16, 0.3, 2.8, 7); trunkG.translate(0, 1.4, 0);
-    var folG = new THREE.IcosahedronGeometry(1.9, 1);
-    // jitter foliage vertices so canopies look grown, not like beach balls
-    var pa = folG.attributes.position;
-    for (var vi = 0; vi < pa.count; vi++) {
-      pa.setXYZ(vi, pa.getX(vi) * rand(0.88, 1.12), pa.getY(vi) * rand(0.82, 1.05), pa.getZ(vi) * rand(0.88, 1.12));
+    // Forked-trunk leafy trees, ported from Unity TreeShape.cs: the crown is
+    // seven noise-displaced icosahedron blobs (flat-shaded, so it reads as
+    // low-poly facets like the preview tree), and the trunk is a tapered
+    // tube that bends slightly and forks into two branches near the top.
+    // Three cached variants are shared by every street tree. The beach
+    // palms further up the file keep their own look, untouched.
+    function treeNoise(x, y, z, s) {
+      var xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+      var fx = x - xi, fy = y - yi, fz = z - zi;
+      fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy); fz = fz * fz * (3 - 2 * fz);
+      var r = 0;
+      for (var i = 0; i < 8; i++) {
+        var dx = i & 1, dy = (i >> 1) & 1, dz = (i >> 2) & 1;
+        var wgt = (dx ? fx : 1 - fx) * (dy ? fy : 1 - fy) * (dz ? fz : 1 - fz);
+        r += wgt * tHash(xi + dx, yi + dy, zi + dz + s * 131);
+      }
+      return r;
     }
-    folG.computeVertexNormals();
-    var trunkM = mat(0x5d4630, 0.95, 0);
-    var folMats = [mat(0x4a7d3a, 0.95, 0), mat(0x5c8a42, 0.95, 0), mat(0x3e7034, 0.95, 0)];
+    function icoBase(subdiv) {
+      var t = (1 + Math.sqrt(5)) / 2;
+      var verts = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map(function (p) {
+        var l = Math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]); return [p[0] / l, p[1] / l, p[2] / l];
+      });
+      var faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+      for (var s = 0; s < subdiv; s++) {
+        var mid = {}, nf = [];
+        var M = function (i, j) {
+          var k = i < j ? i + "_" + j : j + "_" + i;
+          if (mid[k] != null) return mid[k];
+          var a = verts[i], c = verts[j];
+          var x = a[0] + c[0], y = a[1] + c[1], z = a[2] + c[2];
+          var l = Math.sqrt(x * x + y * y + z * z) || 1;
+          verts.push([x / l, y / l, z / l]);
+          mid[k] = verts.length - 1; return mid[k];
+        };
+        faces.forEach(function (fc) { var a = M(fc[0], fc[1]), b = M(fc[1], fc[2]), c = M(fc[2], fc[0]); nf.push([fc[0], a, c], [fc[1], b, a], [fc[2], c, b], [a, b, c]); });
+        faces = nf;
+      }
+      return { verts: verts, faces: faces };
+    }
+    function crownGeo(seed, R) {
+      var base = icoBase(2);
+      var pos = [], idx = [], blobs = 7;
+      for (var k = 0; k < blobs; k++) {
+        var ang = tHash(seed, k, 1) * 6.283, el = (tHash(seed, k, 2) - 0.3) * 1.1;
+        var dist = k === 0 ? 0 : R * (0.45 + 0.35 * tHash(seed, k, 3));
+        var cx = Math.cos(ang) * dist, cz = Math.sin(ang) * dist, cy = Math.sin(el) * R * 0.55;
+        var br = R * (k === 0 ? 0.72 : 0.42 + 0.22 * tHash(seed, k, 4));
+        var off = pos.length / 3;
+        base.verts.forEach(function (p) {
+          var n = 0.72 + 0.55 * treeNoise(p[0] * 2.3 + k * 7.1, p[1] * 2.3, p[2] * 2.3, seed) + 0.18 * treeNoise(p[0] * 6, p[1] * 6 + k, p[2] * 6, seed + 5);
+          var yy = p[1] < 0 ? p[1] * 0.7 : p[1];               // flatter underside, like the preview
+          pos.push(cx + p[0] * br * n, cy + yy * br * n, cz + p[2] * br * n);
+        });
+        base.faces.forEach(function (f) { idx.push(off + f[0], off + f[1], off + f[2]); });
+      }
+      var g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      g.setIndex(idx);
+      g.computeVertexNormals();
+      return g;
+    }
+    function tubeInto(bucket, path, r0, r1, sides) {
+      var n = path.length, off = bucket.pos.length / 3;
+      for (var i = 0; i < n; i++) {
+        var tt = i / (n - 1), r = r0 + (r1 - r0) * tt;
+        var p = path[i], q = path[Math.min(i + 1, n - 1)], o = path[Math.max(i - 1, 0)];
+        var dx = q[0] - o[0], dy = q[1] - o[1], dz = q[2] - o[2];
+        var l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
+        var sx = dy, sy = -dx, sz = 0;
+        var sl = Math.sqrt(sx * sx + sy * sy); if (sl < 1e-4) { sx = 1; sy = 0; sl = 1; } sx /= sl; sy /= sl;
+        var ux = dy * sz - dz * sy, uy = dz * sx - dx * sz, uz = dx * sy - dy * sx;
+        for (var s = 0; s < sides; s++) {
+          var a = s / sides * 6.2832, ca = Math.cos(a), sa = Math.sin(a);
+          bucket.pos.push(p[0] + (sx * ca + ux * sa) * r, p[1] + (sy * ca + uy * sa) * r, p[2] + (sz * ca + uz * sa) * r);
+        }
+      }
+      for (var i2 = 0; i2 < n - 1; i2++) for (var s2 = 0; s2 < sides; s2++) {
+        var a2 = off + i2 * sides + s2, b2 = off + i2 * sides + (s2 + 1) % sides, c2 = off + (i2 + 1) * sides + s2, d2 = off + (i2 + 1) * sides + (s2 + 1) % sides;
+        bucket.idx.push(a2, c2, b2, b2, c2, d2, a2, b2, c2, b2, d2, c2);   // both windings, like the Unity tube
+      }
+    }
+    function trunkGeo(seed, H) {
+      var bucket = { pos: [], idx: [] };
+      var bend = (tHash(seed, 1, 9) - 0.5) * 0.5;
+      var main = [];
+      for (var i = 0; i <= 8; i++) { var t = i / 8; main.push([bend * t * t * H * 0.25, t * H * 0.62, 0]); }
+      tubeInto(bucket, main, 0.30, 0.17, 9);
+      for (var k = 0; k < 2; k++) {
+        var s = k === 0 ? 1 : -1, top = main[main.length - 1], br2 = [];
+        for (var j = 0; j <= 5; j++) { var t2 = j / 5; br2.push([top[0] + s * t2 * H * 0.22, top[1] + t2 * H * 0.38, top[2] + (tHash(seed, k, 5) - 0.5) * t2 * H * 0.2]); }
+        tubeInto(bucket, br2, 0.15, 0.07, 7);
+      }
+      var g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(bucket.pos, 3));
+      g.setIndex(bucket.idx);
+      g.computeVertexNormals();
+      return g;
+    }
+    var trunkGeos = [trunkGeo(3, 4.5), trunkGeo(4, 4.5), trunkGeo(5, 4.5)];
+    var crownGeos = [crownGeo(3, 3.0), crownGeo(4, 3.0), crownGeo(5, 3.0)];
+    var trunkM = mat(0x5d4630, 0.95, 0); trunkM.side = THREE.DoubleSide;
+    var folMats = [0x336b2b, 0x457a2e, 0x2b5c30].map(function (c) {
+      return new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: true });
+    });
     var spots = [];
     for (var sx = -3; sx <= 3; sx++) for (var sz = -3; sz <= 1; sz++) {
       // on the pavement corners of each block, clear of the buildings at the centre
@@ -2744,11 +3024,10 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var grassMatShared = new THREE.MeshStandardMaterial({ map: grassTexShared, roughness: 1 });
     spots.forEach(function (s) {
       var g = new THREE.Group();
-      var tr = new THREE.Mesh(trunkG, trunkM); tr.castShadow = true; g.add(tr);
-      var f1 = new THREE.Mesh(folG, folMats[Math.floor(Math.random() * 3)]);
-      f1.position.y = 3.9; f1.castShadow = true; g.add(f1);
-      var f2 = new THREE.Mesh(folG, folMats[Math.floor(Math.random() * 3)]);
-      f2.scale.setScalar(0.62); f2.position.set(rand(-0.9, 0.9), 3.1, rand(-0.9, 0.9)); g.add(f2);
+      var v = Math.floor(Math.random() * 3);
+      var tr = new THREE.Mesh(trunkGeos[v], trunkM); tr.castShadow = true; g.add(tr);
+      var crown = new THREE.Mesh(crownGeos[v], folMats[v]);
+      crown.position.y = 4.6; crown.castShadow = true; g.add(crown);
       var sc = rand(0.85, 1.3);
       g.scale.setScalar(sc);
       g.position.set(s.x, s.beach ? 0.04 : 0.2, s.z);
@@ -2971,8 +3250,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   }
 
   // ---------- People: real-proportioned humans ----------
-  var SKIN_TONES = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac, 0x6b4423, 0xa06a35];
-  var HAIR_COLORS = [0x191410, 0x3a2417, 0x6b4423, 0xb08a4f, 0xd8c9a3, 0x8a8d90, 0x54260f];
+  var SKIN_TONES = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac, 0x6b4423, 0xa06a35, 0xd9a680, 0x734d38, 0xebc2a3];
+  var HAIR_COLORS = [0x191410, 0x3a2417, 0x6b4423, 0xb08a4f, 0xd8c9a3, 0x8a8d90, 0x54260f, 0x0f0a08, 0x4d331a, 0xa68040, 0x808080];
   function buildPerson(o) {
     o = o || {};
     var g = new THREE.Group();
@@ -3017,6 +3296,10 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var shoulderBar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.56, 10), shirt);
     shoulderBar.rotation.z = Math.PI / 2; shoulderBar.scale.z = 1; shoulderBar.position.y = 1.53;
     shoulderBar.castShadow = true; g.add(shoulderBar); // rounded shoulders
+    // collar ring where the shirt meets the neck, and a chest pocket
+    var collar = new THREE.Mesh(new THREE.CylinderGeometry(0.088, 0.108, 0.07, 10), shirt);
+    collar.position.y = 1.585; collar.castShadow = true; g.add(collar);
+    if (!dress) g.add(box(0.11, 0.09, 0.02, shirt, 0.11, 1.38, 0.145, false)); // chest pocket
     // arms — two real segments: upper arm pivots at the shoulder, forearm
     // pivots at the elbow and rests with a slight natural bend, hand at the end
     function makeArm(side) {
@@ -3323,6 +3606,167 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     };
     return wheelShared;
   }
+  // ---------- Smooth lofted supercar geometry (Unity CarShape port) ----------
+  // Pure-math profiles swept into real curved meshes, shared by every car:
+  // a lofted body (rounded-rectangle cross-sections along the car, tapered
+  // nose and tail, wide haunches, wheel arches carved into the sides), a
+  // glass canopy with a painted roof strip, and lathe-turned tyres / rim
+  // barrels. Car space matches the game: front = +Z, length 4.8, and the
+  // arches are carved around the game's own wheels (z ±1.5, centre y 0.42,
+  // radius 0.42), so size, stance and driving are exactly as before.
+  function csClamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+  function csLerp(a, b, t) { return a + (b - a) * t; }
+  function csSmooth(a, b, x) { var t = csClamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); }
+  function csBump(z, c, w) { var d = (z - c) / w; return Math.exp(-d * d); }
+  function csSPow(v, p) { return Math.sign(v) * Math.pow(Math.abs(v), p); }
+  function csSpline(xs, ys, x) {
+    var n = xs.length;
+    if (x <= xs[0]) return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+    var i = 0; while (i < n - 2 && x > xs[i + 1]) i++;
+    var h = xs[i + 1] - xs[i], t = (x - xs[i]) / h;
+    var m0 = i === 0 ? (ys[1] - ys[0]) / (xs[1] - xs[0]) : (ys[i + 1] - ys[i - 1]) / (xs[i + 1] - xs[i - 1]);
+    var m1 = i + 1 === n - 1 ? (ys[n - 1] - ys[n - 2]) / (xs[n - 1] - xs[n - 2]) : (ys[i + 2] - ys[i]) / (xs[i + 2] - xs[i]);
+    var t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m0 + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m1;
+  }
+  var CAR_TZS = [-2.4, -2.2, -1.8, -1.2, -0.4, 0.4, 1.0, 1.55, 2.05, 2.4];
+  var CAR_TYS = [0.56, 0.74, 0.84, 0.86, 0.83, 0.80, 0.78, 0.70, 0.60, 0.50];
+  var CAR_CZS = [-1.6, -1.25, -0.8, -0.15, 0.3, 0.7, 1.05];
+  var CAR_CYS = [0.86, 1.02, 1.17, 1.24, 1.21, 1.04, 0.80];
+  function carHalfW(z) {
+    var w = 0.98;
+    w *= csLerp(1, 0.74, csSmooth(1.3, 2.4, z));              // tapered nose
+    w *= csLerp(1, 0.80, csSmooth(-1.6, -2.4, z));            // tapered tail
+    w += 0.085 * csBump(z, -1.5, 0.75) + 0.07 * csBump(z, 1.5, 0.7);  // haunches / fenders over the wheels
+    return w;
+  }
+  function carTopY(z) { return csSpline(CAR_TZS, CAR_TYS, z); }
+  function carBottomY(z) {
+    var b = 0.24;
+    b += 0.10 * csSmooth(-1.8, -2.4, z);                      // rear diffuser rises
+    b -= 0.05 * csSmooth(1.9, 2.4, z);                        // front splitter dips
+    return b;
+  }
+  function carCanopyTop(z) { return csSpline(CAR_CZS, CAR_CYS, z); }
+  function loftBodyGeo() {
+    var M = 44, dz = 0.05, ZFront = 2.4, ZRear = -2.4;
+    var pos = [], idx = [];
+    var rings = Math.round((ZFront - ZRear) / dz) + 1;
+    for (var r = 0; r < rings; r++) {
+      var z = ZRear + r * dz;
+      var hw = carHalfW(z), top = carTopY(z), bot = carBottomY(z), mid = (top + bot) * 0.5, hh = (top - bot) * 0.5;
+      for (var k = 0; k < M; k++) {
+        var th = -Math.PI * 0.5 + k / M * Math.PI * 2;         // seam hidden at the underside centre
+        var c = Math.cos(th), s = Math.sin(th);
+        var x = hw * csSPow(c, 0.40) * (1 - 0.09 * Math.max(0, s));   // tumblehome: narrower shoulders
+        var y = mid + hh * csSPow(s, 0.52);
+        for (var wi = 0; wi < 2; wi++) {                       // carve the wheel arches into the sides
+          var zc = wi === 0 ? 1.5 : -1.5;
+          var dd = Math.sqrt((z - zc) * (z - zc) + (y - 0.42) * (y - 0.42));
+          var tt = csSmooth(0.55, 0.46, dd);
+          var inner = Math.sign(x) * (hw - 0.40);
+          if (Math.abs(x) > Math.abs(inner)) x = csLerp(x, inner, tt);
+        }
+        pos.push(x, y, z);
+      }
+    }
+    for (var r2 = 0; r2 < rings - 1; r2++) for (var k2 = 0; k2 < M; k2++) {
+      var a = r2 * M + k2, b = r2 * M + (k2 + 1) % M, c2 = (r2 + 1) * M + k2, d2 = (r2 + 1) * M + (k2 + 1) % M;
+      idx.push(a, b, c2, b, d2, c2);
+    }
+    function cap(first, rear) {
+      var cx = 0, cy = 0, cz = 0;
+      for (var k3 = 0; k3 < M; k3++) { cx += pos[(first + k3) * 3]; cy += pos[(first + k3) * 3 + 1]; cz += pos[(first + k3) * 3 + 2]; }
+      var ci = pos.length / 3;
+      pos.push(cx / M, cy / M, cz / M);
+      for (var k4 = 0; k4 < M; k4++) {
+        var a2 = first + k4, b2 = first + (k4 + 1) % M;
+        if (rear) idx.push(ci, b2, a2); else idx.push(ci, a2, b2);
+      }
+    }
+    cap(0, true); cap((rings - 1) * M, false);
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  }
+  function loftCanopyGeos() {
+    var M = 21, dz = 0.05;
+    var z0 = CAR_CZS[0], z1 = CAR_CZS[CAR_CZS.length - 1];
+    var pos = [], glassIdx = [], roofIdx = [];
+    var rings = Math.round((z1 - z0) / dz) + 1;
+    for (var r = 0; r < rings; r++) {
+      var z = z0 + r * dz;
+      var baseY = carTopY(z) - 0.03, topY = carCanopyTop(z);
+      var endTaper = csSmooth(z0, z0 + 0.25, z) * csSmooth(z1, z1 - 0.12, z);
+      var cw = carHalfW(z) * 0.74 * csLerp(0.82, 1, endTaper);
+      for (var k = 0; k < M; k++) {
+        var th = k / (M - 1) * Math.PI;                        // right side -> over the roof -> left side
+        var c = Math.cos(th), s = Math.max(0, Math.sin(th));
+        var shrink = 0.62 + 0.38 * (1 - csSmooth(0.2, 0.95, s));      // roof narrower than the belt line
+        pos.push(cw * c * Math.pow(Math.max(shrink, 0.01), 0.8), baseY + (topY - baseY) * Math.pow(s, 0.65), z);
+      }
+    }
+    for (var r2 = 0; r2 < rings - 1; r2++) for (var k2 = 0; k2 < M - 1; k2++) {
+      var a = r2 * M + k2, b = a + 1, c2 = (r2 + 1) * M + k2, d2 = c2 + 1;
+      var zz = z0 + r2 * dz;
+      var dst = (k2 >= 6 && k2 <= M - 8 && zz > -1.05 && zz < 0.2) ? roofIdx : glassIdx;   // centre strip over the seats is painted
+      dst.push(a, b, c2, b, d2, c2);
+    }
+    function mk(idxs) {
+      var g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos.slice(), 3));
+      g.setIndex(idxs);
+      g.computeVertexNormals();
+      return g;
+    }
+    return { glass: mk(glassIdx), roof: mk(roofIdx) };
+  }
+  function latheGeo(prof, seg) {                               // profile = (axial, radius) pairs around the X axis
+    var pos = [], uv = [], idx = [];
+    var n = prof.length / 2;
+    for (var i = 0; i < n; i++) for (var s = 0; s < seg; s++) {
+      var a = s / seg * Math.PI * 2;
+      pos.push(prof[i * 2], prof[i * 2 + 1] * Math.cos(a), prof[i * 2 + 1] * Math.sin(a));
+      uv.push(s / seg, i / (n - 1));
+    }
+    for (var i2 = 0; i2 < n - 1; i2++) for (var s2 = 0; s2 < seg; s2++) {
+      var a2 = i2 * seg + s2, b2 = i2 * seg + (s2 + 1) % seg, c2 = (i2 + 1) * seg + s2, d2 = (i2 + 1) * seg + (s2 + 1) % seg;
+      idx.push(a2, b2, c2, b2, d2, c2);
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  }
+  function tyreGeo(w, R) {                                     // rounded shoulders, concave sidewall, open middle
+    var h = w * 0.5, ri = R * 0.60;
+    var p = [-h * 0.82, ri, -h * 0.94, ri + 0.045, -h * 1.0, R - 0.09, -h * 0.96, R - 0.035, -h * 0.80, R - 0.005,
+             -h * 0.45, R, 0, R, h * 0.45, R, h * 0.80, R - 0.005, h * 0.96, R - 0.035, h * 1.0, R - 0.09, h * 0.94, ri + 0.045, h * 0.82, ri];
+    return latheGeo(p, 40);
+  }
+  function rimBarrelGeo(w, R) {                                // the silver dish behind the spokes
+    var h = w * 0.5, ri = R * 0.60;
+    var p = [-h * 0.78, ri - 0.01, -h * 0.72, ri - 0.035, h * 0.6, ri - 0.05, h * 0.9, ri - 0.035, h * 0.97, ri + 0.012, h * 0.84, ri + 0.012];
+    return latheGeo(p, 40);
+  }
+  var loftCache = null;
+  function loftParts() {
+    if (loftCache) return loftCache;
+    var can = loftCanopyGeos();
+    loftCache = {
+      body: loftBodyGeo(), canopyGlass: can.glass, canopyRoof: can.roof,
+      tyreF: tyreGeo(0.30, 0.42), tyreR: tyreGeo(0.34, 0.42),
+      rimF: rimBarrelGeo(0.30, 0.42), rimR: rimBarrelGeo(0.34, 0.42),
+      twinSpoke: new THREE.BoxGeometry(0.024, 0.48, 0.04)
+    };
+    return loftCache;
+  }
+
   function buildCar(color, opts) {
     opts = opts || {};
     var L = opts.len || 4.8;
@@ -3340,13 +3784,18 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var chromeD = new THREE.MeshStandardMaterial({ color: 0x9aa1ab, roughness: 0.12, metalness: 0.95, envMap: ENV, envMapIntensity: 1.1 });
     var mirrorFace = new THREE.MeshStandardMaterial({ color: 0xdfe9f0, roughness: 0.04, metalness: 1, envMap: ENV, envMapIntensity: 1.5 });
     var redGlow = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 0.9 });
-    // --- low, wide, angular body ---
-    g.add(box(2.04, 0.52, L * 0.98, paint, 0, 0.5, 0));                        // main body
-    var nose = box(1.92, 0.3, 1.35, paint, 0, 0.56, L * 0.36); nose.rotation.x = 0.09; g.add(nose); // wedge nose
-    g.add(box(1.66, 0.13, L * 0.3, paintHi, 0, 0.83, L * 0.3));                // sculpted bonnet panel
+    // --- smooth lofted body + glass canopy (Unity CarShape port): one
+    // curved silver shell with carved wheel arches, not stacked boxes ---
+    var LP = loftParts();
+    var bodyMesh = new THREE.Mesh(LP.body, paint);
+    bodyMesh.castShadow = true; bodyMesh.receiveShadow = true; g.add(bodyMesh);
+    var canopyGlassMesh = new THREE.Mesh(LP.canopyGlass, glassM);
+    canopyGlassMesh.castShadow = true; g.add(canopyGlassMesh);              // dark glass canopy
+    var canopyRoofMesh = new THREE.Mesh(LP.canopyRoof, paintHi);
+    canopyRoofMesh.castShadow = true; g.add(canopyRoofMesh);               // painted roof strip over the seats
     g.add(box(2.08, 0.1, 0.55, carbon, 0, 0.2, L / 2 + 0.05));                 // carbon front splitter
-    // single-frame hexagonal grille: silver frame, black mesh, slats; plus
-    // a black mesh air intake in each lower corner of the bumper
+    // single-frame hexagonal grille on the nose: chrome frame, black mesh,
+    // slats; plus a black mesh air intake in each lower corner of the bumper
     function hexGeo(k, depth) {
       var s = new THREE.Shape();
       var pts = [[-0.62, 0.18], [0.62, 0.18], [0.7, 0], [0.5, -0.18], [-0.5, -0.18], [-0.7, 0]];
@@ -3354,70 +3803,50 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       s.closePath();
       return new THREE.ExtrudeGeometry(s, { depth: depth, bevelEnabled: false });
     }
-    var grilleFrame = new THREE.Mesh(hexGeo(1, 0.05), chromeD); grilleFrame.position.set(0, 0.5, L / 2 + 0.06); g.add(grilleFrame);
-    var grilleMesh = new THREE.Mesh(hexGeo(0.88, 0.06), mat(0x0a0b0d, 0.85, 0.1)); grilleMesh.position.set(0, 0.5, L / 2 + 0.07); g.add(grilleMesh);
+    var grilleFrame = new THREE.Mesh(hexGeo(1, 0.05), chromeD); grilleFrame.position.set(0, 0.36, L / 2 + 0.06); g.add(grilleFrame);
+    var grilleMesh = new THREE.Mesh(hexGeo(0.88, 0.06), mat(0x0a0b0d, 0.85, 0.1)); grilleMesh.position.set(0, 0.36, L / 2 + 0.07); g.add(grilleMesh);
     var slatM = mat(0x30333a, 0.6, 0.4);
-    for (var sl = 0; sl < 4; sl++) g.add(box(1.08 - Math.abs(sl - 1.5) * 0.06, 0.012, 0.012, slatM, 0, 0.4 + sl * 0.07, L / 2 + 0.135, false));
+    for (var sl = 0; sl < 4; sl++) g.add(box(1.08 - Math.abs(sl - 1.5) * 0.06, 0.012, 0.012, slatM, 0, 0.27 + sl * 0.06, L / 2 + 0.135, false));
     [-1, 1].forEach(function (sd) {
-      g.add(box(0.4, 0.2, 0.05, mat(0x0a0b0d, 0.85, 0.1), sd * 0.82, 0.4, L / 2 + 0.06, false));   // corner intake
-      g.add(box(0.4, 0.014, 0.012, slatM, sd * 0.82, 0.4, L / 2 + 0.09, false));
+      g.add(box(0.4, 0.2, 0.05, mat(0x0a0b0d, 0.85, 0.1), sd * 0.5, 0.36, L / 2 + 0.06, false));   // corner intake
+      g.add(box(0.4, 0.014, 0.012, slatM, sd * 0.5, 0.36, L / 2 + 0.09, false));
     });
-    g.add(box(1.86, 0.24, 1.15, paint, 0, 0.72, -L * 0.36));                   // rear deck
     [-1, 1].forEach(function (sd) {
-      g.add(box(0.05, 0.3, 0.2, carbon, sd * 0.62, 0.97, -L * 0.43, false));   // wing pylons
+      g.add(box(0.05, 0.34, 0.2, carbon, sd * 0.62, 0.95, -L * 0.43, false));   // wing pylons
       g.add(box(0.03, 0.14, 0.46, carbon, sd * 0.9, 1.12, -L * 0.45, false));  // wing end-plates
     });
     g.add(box(1.8, 0.04, 0.44, carbon, 0, 1.12, -L * 0.45, false));            // fixed carbon rear wing
     g.add(box(1.8, 0.13, 0.5, carbon, 0, 0.17, -L / 2 + 0.08));                // carbon rear diffuser
     for (var df = -3; df <= 3; df++) g.add(box(0.04, 0.16, 0.42, carbon, df * 0.24, 0.17, -L / 2 + 0.08, false)); // diffuser fins
-    // panel gaps / shut lines: bonnet, doors and boot read as separate panels
-    g.add(box(0.02, 0.014, L * 0.27, gapM, 0.63, 0.9, L * 0.3, false));
-    g.add(box(0.02, 0.014, L * 0.27, gapM, -0.63, 0.9, L * 0.3, false));
-    g.add(box(1.28, 0.014, 0.02, gapM, 0, 0.9, L * 0.445, false));
-    g.add(box(1.5, 0.018, 0.014, gapM, 0, 0.79, -L * 0.492, false));           // boot shut line
     var exhMat = new THREE.MeshStandardMaterial({ color: 0x1a0d08, emissive: 0xff5a1a, emissiveIntensity: 0.25, roughness: 0.7 });
     [-1, 1].forEach(function (sd) {
-      g.add(box(0.07, 0.42, 1.15, carbon, sd * 1.0, 0.56, -L * 0.16, false));  // side air intakes
-      g.add(box(0.05, 0.3, 0.6, carbon, sd * 1.01, 0.3, L * 0.02, false));     // carbon side skirt
+      g.add(box(0.07, 0.42, 1.15, carbon, sd * 1.0, 0.56, -L * 0.16, false));  // carbon side blade / intake at the widest point of the haunch
       var exh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.2, 10).rotateX(Math.PI / 2), chromeD);
       exh.position.set(sd * 0.55, 0.3, -L / 2 - 0.04); g.add(exh);             // exhaust tip
       var exhGlow = new THREE.Mesh(new THREE.CircleGeometry(0.042, 10), exhMat);
       exhGlow.position.set(sd * 0.55, 0.3, -L / 2 - 0.145); exhGlow.rotation.y = Math.PI; g.add(exhGlow); // hot exhaust core
-      g.add(box(0.14, 0.03, 0.03, paint, sd * 0.98, 1.0, L * 0.13, false));    // mirror stalks
-      g.add(box(0.05, 0.1, 0.16, paint, sd * 1.06, 1.02, L * 0.13, false));    // wing mirror housings
+      g.add(box(0.34, 0.03, 0.03, paint, sd * 0.8, 1.0, L * 0.13, false));     // mirror stalks
+      g.add(box(0.05, 0.1, 0.16, paint, sd * 1.0, 1.02, L * 0.13, false));     // wing mirror housings
       var mf = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.08), mirrorFace);
-      mf.position.set(sd * 1.09, 1.02, L * 0.13); mf.rotation.y = sd * Math.PI / 2; g.add(mf); // mirror glass
-      // door shut lines + flush door handle
-      g.add(box(0.014, 0.44, 0.02, gapM, sd * 1.028, 0.55, L * 0.17, false));
-      g.add(box(0.014, 0.44, 0.02, gapM, sd * 1.028, 0.55, -L * 0.13, false));
-      g.add(box(0.014, 0.02, L * 0.3, gapM, sd * 1.028, 0.335, L * 0.02, false));
-      g.add(box(0.018, 0.028, 0.17, chromeD, sd * 1.03, 0.71, -L * 0.05, false)); // door handle
+      mf.position.set(sd * 1.03, 1.02, L * 0.13); mf.rotation.y = sd * Math.PI / 2; g.add(mf); // mirror glass
+      g.add(box(0.018, 0.028, 0.17, chromeD, sd * 0.96, 0.64, -0.15, false));  // flush door handle on the curved flank
     });
-    // --- glass canopy, sloped windscreen, A-pillars, wipers ---
-    g.add(box(1.52, 0.5, 2.3, glassM, 0, 0.94, -L * 0.04));                    // tinted glass canopy
-    var shield = box(1.44, 0.018, 0.85, glassM, 0, 1.05, L * 0.155, false); shield.rotation.x = -0.62; g.add(shield); // windscreen
-    var rshield = box(1.44, 0.018, 0.7, glassM, 0, 1.04, -L * 0.225, false); rshield.rotation.x = 0.55; g.add(rshield); // rear glass
-    [-1, 1].forEach(function (sd) {
-      var pil = box(0.055, 0.8, 0.05, paint, sd * 0.71, 1.03, L * 0.155, false); pil.rotation.x = -0.62; g.add(pil); // A-pillars
-      var wp = box(0.018, 0.014, 0.44, dashM, sd * 0.3, 1.0, L * 0.185, false); wp.rotation.x = -0.5; wp.rotation.y = sd * 0.25; g.add(wp); // wipers
-    });
-    g.add(box(1.34, 0.06, 1.5, paint, 0, 1.21, -L * 0.06));                    // silver roof panel
-    // --- detailed cabin ---
-    g.add(box(1.46, 0.05, 2.1, leather, 0, 0.79, -0.15, false));               // cabin floor
-    var dash = box(1.46, 0.2, 0.3, dashM, 0, 0.99, 0.74); dash.rotation.x = 0.15; g.add(dash); // dashboard
-    g.add(box(1.42, 0.05, 0.1, dashM, 0, 1.13, 0.8, false));                   // dash top / windscreen header rail
+    // --- detailed cabin (sized to sit inside the curved canopy) ---
+    g.add(box(1.3, 0.05, 2.1, leather, 0, 0.79, -0.15, false));                // cabin floor
+    var dash = box(1.15, 0.2, 0.3, dashM, 0, 0.99, 0.74); dash.rotation.x = 0.15; g.add(dash); // dashboard
+    g.add(box(1.1, 0.05, 0.1, dashM, 0, 1.13, 0.8, false));                    // dash top / windscreen header rail
     var cluster = makeCluster();
     var clusterMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.18), new THREE.MeshBasicMaterial({ map: cluster.tex }));
-    clusterMesh.position.set(0.42, 1.04, 0.585); clusterMesh.rotation.y = Math.PI; clusterMesh.rotation.x = 0.12; g.add(clusterMesh); // digital cluster
+    clusterMesh.position.set(0.3, 1.04, 0.585); clusterMesh.rotation.y = Math.PI; clusterMesh.rotation.x = 0.12; g.add(clusterMesh); // digital cluster
     var nav = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.24), navMat());
     nav.position.set(-0.08, 1.03, 0.585); nav.rotation.y = Math.PI; nav.rotation.x = 0.12; g.add(nav); // centre nav screen
     var rm = revMats();
-    for (var ri = 0; ri < 8; ri++) g.add(box(0.045, 0.018, 0.015, rm[ri], 0.42 + (ri - 3.5) * 0.056, 1.13, 0.62, false)); // shift-light strip
+    for (var ri = 0; ri < 8; ri++) g.add(box(0.045, 0.018, 0.015, rm[ri], 0.3 + (ri - 3.5) * 0.056, 1.13, 0.62, false)); // shift-light strip
     g.add(box(0.3, 0.15, 0.95, leather, 0, 0.86, 0.02, false));                // centre console
     var gear = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.13, 8), chromeD);
     gear.position.set(0, 0.99, -0.02); gear.rotation.x = 0.25; g.add(gear);    // gear lever
     g.add(box(0.055, 0.045, 0.1, carbon, 0, 1.06, -0.035, false));             // gear knob
-    [0.3, 0.44, 0.57].forEach(function (px) { var pd = box(0.085, 0.13, 0.02, chromeD, px, 0.88, 0.62, false); pd.rotation.x = 0.5; g.add(pd); }); // pedals
+    [0.16, 0.3, 0.44].forEach(function (px) { var pd = box(0.085, 0.13, 0.02, chromeD, px, 0.88, 0.62, false); pd.rotation.x = 0.5; g.add(pd); }); // pedals
     // steering wheel with spoke buttons — it turns with the steering
     var steerWheel = new THREE.Group();
     steerWheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.028, 10, 24), dashM));
@@ -3429,25 +3858,25 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     steerWheel.add(box(0.07, 0.028, 0.014, carbon, 0.1, 0, 0.022, false));     // wheel buttons R
     var swDot = new THREE.MeshStandardMaterial({ color: 0x0b2b33, emissive: 0x19d3e6, emissiveIntensity: 1.4 });
     steerWheel.add(box(0.02, 0.012, 0.014, swDot, 0, 0.1, 0.022, false));      // wheel centre light
-    steerWheel.position.set(0.42, 0.97, 0.47);
+    steerWheel.position.set(0.3, 0.97, 0.47);
     steerWheel.rotation.x = -0.35;
     g.add(steerWheel);
-    var column = box(0.06, 0.06, 0.3, dashM, 0.42, 0.93, 0.6, false); column.rotation.x = 0.5; g.add(column);
+    var column = box(0.06, 0.06, 0.3, dashM, 0.3, 0.93, 0.6, false); column.rotation.x = 0.5; g.add(column);
     // two sculpted leather seats: stitched texture, bolsters, headrests
-    [-0.42, 0.42].forEach(function (sx) {
-      g.add(box(0.54, 0.13, 0.52, leather, sx, 0.85, -0.28, false));           // seat base
-      var back = box(0.54, 0.36, 0.13, leather, sx, 0.99, -0.55, false); back.rotation.x = -0.14; g.add(back); // seat back
-      g.add(box(0.34, 0.15, 0.1, leather, sx, 1.22, -0.6, false));             // headrest
-      g.add(box(0.08, 0.1, 0.46, leather, sx - 0.25, 0.92, -0.28, false));     // bolsters
-      g.add(box(0.08, 0.1, 0.46, leather, sx + 0.25, 0.92, -0.28, false));
-      g.add(box(0.54, 0.035, 0.02, redGlow, sx, 1.1, -0.6, false));            // red seat accent
+    [-0.4, 0.4].forEach(function (sx) {
+      g.add(box(0.54, 0.13, 0.52, leather, sx, 0.82, -0.28, false));           // seat base
+      var back = box(0.54, 0.36, 0.13, leather, sx, 0.95, -0.55, false); back.rotation.x = -0.14; g.add(back); // seat back
+      g.add(box(0.34, 0.15, 0.1, leather, sx, 1.12, -0.6, false));             // headrest, just under the roof strip
+      g.add(box(0.08, 0.1, 0.46, leather, sx - 0.25, 0.88, -0.28, false));     // bolsters
+      g.add(box(0.08, 0.1, 0.46, leather, sx + 0.25, 0.88, -0.28, false));
+      g.add(box(0.54, 0.035, 0.02, redGlow, sx, 1.04, -0.6, false));           // red seat accent
     });
     // door cards with armrests, rear-view mirror with a real glass face, visors
     [-1, 1].forEach(function (sd) {
-      g.add(box(0.04, 0.34, 1.2, dashM, sd * 0.73, 0.93, -0.05, false));       // door panel
-      g.add(box(0.07, 0.05, 0.52, leather, sd * 0.69, 0.96, -0.05, false));    // armrest
-      g.add(box(0.03, 0.025, 0.14, chromeD, sd * 0.7, 1.04, 0.18, false));     // inner door handle
-      g.add(box(0.3, 0.02, 0.16, dashM, sd * 0.38, 1.155, 0.72, false));       // sun visor
+      g.add(box(0.04, 0.34, 1.2, dashM, sd * 0.66, 0.93, -0.05, false));       // door panel
+      g.add(box(0.07, 0.05, 0.52, leather, sd * 0.62, 0.96, -0.05, false));    // armrest
+      g.add(box(0.03, 0.025, 0.14, chromeD, sd * 0.63, 1.04, 0.18, false));    // inner door handle
+      g.add(box(0.3, 0.02, 0.16, dashM, sd * 0.32, 1.155, 0.72, false));       // sun visor
     });
     g.add(box(0.46, 0.11, 0.03, dashM, 0, 1.13, 0.42, false));                 // rear-view mirror housing
     var rvGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.08), mirrorFace);
@@ -3457,21 +3886,28 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var ledDot = new THREE.MeshStandardMaterial({ color: 0xe8f4ff, emissive: 0xbfe0ff, emissiveIntensity: 2.2 });
     var lampDark = new THREE.MeshPhysicalMaterial({ color: 0x0b0d11, roughness: 0.08, metalness: 0.4, clearcoat: 1, envMap: ENV, envMapIntensity: 1.3 });
     [-1, 1].forEach(function (sd) {
-      var lamp = box(0.62, 0.14, 0.06, lampDark, sd * 0.66, 0.63, L / 2 + 0.05, false); lamp.rotation.z = sd * 0.1; g.add(lamp); // lamp housing
-      var drl = box(0.58, 0.022, 0.03, led, sd * 0.66, 0.69, L / 2 + 0.095, false); drl.rotation.z = sd * 0.1; g.add(drl);   // upper LED line
-      var drl2 = box(0.4, 0.016, 0.03, led, sd * 0.62, 0.585, L / 2 + 0.095, false); drl2.rotation.z = sd * 0.1; g.add(drl2); // lower LED line
-      g.add(box(0.09, 0.07, 0.03, ledDot, sd * 0.5, 0.635, L / 2 + 0.095, false));                                           // projector
+      // slim angular LED lamps lying on the sloped front corners, pitched
+      // with the bodywork like the Unity car: black housing, upper + lower
+      // white LED lines and a projector dot in one tilted group per side
+      var lampG = new THREE.Group();
+      lampG.position.set(sd * 0.6, carTopY(2.05) + 0.008, 2.05);
+      lampG.rotation.x = 0.2; lampG.rotation.z = sd * 0.06;
+      lampG.add(box(0.56, 0.03, 0.22, lampDark, 0, 0, 0, false));              // lamp housing
+      lampG.add(box(0.52, 0.016, 0.024, led, 0, 0.02, 0.075, false));          // upper LED line
+      lampG.add(box(0.38, 0.014, 0.018, led, -sd * 0.03, 0.02, -0.05, false)); // lower LED line
+      lampG.add(box(0.09, 0.016, 0.07, ledDot, -sd * 0.14, 0.02, 0.01, false)); // projector
+      g.add(lampG);
     });
     var tlS = new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 1.1 });
-    g.add(box(1.55, 0.05, 0.05, tlS, 0, 0.68, -L / 2 - 0.06, false));          // rear light bar
+    g.add(box(1.2, 0.06, 0.03, tlS, 0, 0.47, -L / 2 - 0.06, false));           // rear light bar
     // indicators: amber corners front + rear and side repeaters (they blink)
     var indMatL = new THREE.MeshStandardMaterial({ color: 0x2a1a05, emissive: 0xffa018, emissiveIntensity: 0 });
     var indMatR = new THREE.MeshStandardMaterial({ color: 0x2a1a05, emissive: 0xffa018, emissiveIntensity: 0 });
     [[-1, indMatL], [1, indMatR]].forEach(function (pr) {
       var sd = pr[0], im = pr[1];
-      g.add(box(0.17, 0.04, 0.04, im, sd * 0.88, 0.6, L / 2 + 0.09, false));
-      g.add(box(0.17, 0.04, 0.04, im, sd * 0.88, 0.66, -L / 2 - 0.05, false));
-      g.add(box(0.02, 0.03, 0.1, im, sd * 1.03, 0.62, L * 0.3, false));
+      g.add(box(0.17, 0.04, 0.04, im, sd * 0.55, 0.42, L / 2 + 0.09, false));
+      g.add(box(0.17, 0.04, 0.04, im, sd * 0.68, 0.47, -L / 2 - 0.05, false));
+      g.add(box(0.03, 0.03, 0.1, im, sd * 0.905, 0.6, L * 0.3, false));
     });
     if (opts.type === "taxi") {
       g.add(box(0.52, 0.15, 0.28, mat(0xf5f2e8, 0.4, 0.05, 0xffc93d, 0.6), 0, 1.32, -L * 0.06, false)); // TAXI roof sign
@@ -3482,57 +3918,49 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var poolMat = new THREE.MeshBasicMaterial({ map: poolTexture(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
     var pool = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 6), poolMat);
     pool.rotation.x = -Math.PI / 2; pool.position.set(0, 0.03, L / 2 + 2.6); pool.renderOrder = 2; g.add(pool);
-    // --- real wheels: treaded tyres, brake discs, red calipers, 10-spoke
-    // rims over a glowing orange core, on visible suspension struts ---
+    // --- real wheels: lathe-turned tyres, silver rim barrels, brake
+    // discs, red calipers and twin-spoke rims (Unity CarShape port), on
+    // visible suspension struts ---
     var WP = wheelParts();
     // side = +1 for a right-hand wheel (outboard face towards +X), -1 for a
     // left-hand wheel. Every rim part is stacked along the axle relative to
     // the OUTBOARD face, mirrored by side, so the left and right wheels are
-    // exact mirror images: brake disc inboard, then the glowing core, the
-    // ring and the 10 spokes outboard — nothing flipped.
-    // The tyre itself is OPEN, never a solid capped drum: a tread barrel
-    // plus a flat sidewall RING (outer 0.425, inner 0.25) on each face, so
-    // the centre of the wheel is open and the rim stack inside it is
-    // actually VISIBLE from outside. (A capped cylinder sealed the rim
-    // inside a smooth black drum — the wheel looked identical straight or
-    // steered, which read as "the wheels don't turn".)
-    function glowWheel(side) {
+    // exact mirror images. The tyre is a lathe profile — rounded shoulders,
+    // a concave sidewall and an OPEN middle — so the silver barrel, disc
+    // and twin spokes inside it are actually VISIBLE from outside, and the
+    // carved arch in the lofted body frames the whole wheel.
+    function glowWheel(side, front) {
       var steer = new THREE.Group(); steer.rotation.order = "YXZ";
       var spin = new THREE.Group(); steer.add(spin);
+      var width = front ? 0.3 : 0.34;                       // front tyres a touch narrower, like the Unity car
       var TM = tyreMats();
-      var tread = new THREE.Mesh(WP.treadGeo, TM[0]); tread.castShadow = true; spin.add(tread);
-      [-0.158, 0.158].forEach(function (sx) {
-        var sw = new THREE.Mesh(WP.sidewallGeo, TM[1]); sw.position.x = sx; spin.add(sw);
-      });
+      var tyre = new THREE.Mesh(front ? LP.tyreF : LP.tyreR, TM[0]); tyre.castShadow = true; spin.add(tyre);
+      spin.add(new THREE.Mesh(front ? LP.rimF : LP.rimR, WP.barrelMat));
       var hubBack = new THREE.Mesh(WP.hubBackGeo, WP.hubBackMat); hubBack.position.x = -side * 0.06; spin.add(hubBack);
-      spin.add(new THREE.Mesh(WP.barrelGeo, WP.barrelMat));
-      var disc = new THREE.Mesh(WP.discGeo, WP.discMat); disc.position.x = side * 0.03; spin.add(disc);
-      var glow = new THREE.Mesh(WP.glowGeo, WP.glowMat); glow.position.x = side * 0.07; spin.add(glow);
-      var ring = new THREE.Mesh(WP.ringGeo, WP.ringMat); ring.position.x = side * 0.105; spin.add(ring);
-      for (var sp = 0; sp < 5; sp++) {
-        var spoke = new THREE.Mesh(WP.spokeGeo, WP.spokeMat);
-        spoke.rotation.x = sp * Math.PI / 5; spoke.position.x = side * 0.12; spin.add(spoke);
+      var disc = new THREE.Mesh(WP.discGeo, WP.discMat); disc.position.x = side * (width * 0.5 - 0.13); spin.add(disc);
+      for (var sp = 0; sp < 5; sp++) {                       // 5 twin pairs = 10 spokes
+        [-4, 4].forEach(function (off) {
+          var spoke = new THREE.Mesh(LP.twinSpoke, WP.spokeMat);
+          spoke.rotation.x = (sp * 36 + off) * Math.PI / 180;
+          spoke.position.x = side * (width * 0.5 - 0.03); spin.add(spoke);
+        });
       }
       spin.add(new THREE.Mesh(WP.capGeo, WP.spokeMat));
-      var cal = box(0.09, 0.17, 0.13, WP.caliperMat, side * 0.03, 0.1, 0.155, false); steer.add(cal); // caliper (does not spin)
+      var cal = box(0.05, 0.09, 0.14, WP.caliperMat, side * (width * 0.5 - 0.095), 0.13, 0.05, false); steer.add(cal); // caliper (does not spin)
       steer.userData.spin = spin;
       return steer;
     }
     var wheels = [];
-    var archM = mat(0x060607, 0.95, 0); archM.side = THREE.DoubleSide;
     var strutM = mat(0x17181c, 0.5, 0.6);
     var wz = L / 2 - 0.9;
     [[-0.9, wz], [0.9, wz], [-0.9, -wz], [0.9, -wz]].forEach(function (p) {
-      // wheel-arch trim: a flat RING around the tyre (inner 0.43 clears
-      // the 0.42 tyre), never a solid disc — a solid disc sliced through
-      // the wheel and hid the brake disc and glowing core behind its cap.
-      var arch = new THREE.Mesh(new THREE.RingGeometry(0.43, 0.55, 20).rotateY(Math.PI / 2), archM);
-      arch.position.set(p[0] * 1.04, 0.42, p[1]); g.add(arch);
+      // no arch trim any more: the arch is carved into the lofted body
+      // itself, so the tyre sits in a real recess in the bodywork
       var strut = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.34, 8), strutM);
       strut.position.set(p[0] * 0.74, 0.66, p[1]); g.add(strut);               // suspension damper (just inboard of the tyre's inner face)
       var coil = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.2, 8), WP.caliperMat);
       coil.position.set(p[0] * 0.74, 0.6, p[1]); g.add(coil);                  // coil spring
-      var w = glowWheel(p[0] > 0 ? 1 : -1); w.position.set(p[0], 0.42, p[1]); g.add(w); wheels.push(w);
+      var w = glowWheel(p[0] > 0 ? 1 : -1, p[1] > 0); w.position.set(p[0], 0.42, p[1]); g.add(w); wheels.push(w);
     });
     var beam = null;
     if (opts.beam) {
@@ -3635,8 +4063,11 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var cops = [];
 
   // ---------- Pedestrians: a real crowd ----------
-  var SHIRT_COLORS = [0xffffff, 0x2e4a6b, 0x7a2e2e, 0x3f6212, 0xd9d4c8, 0x22242a, 0xc96f2e, 0x4a5d8f, 0x8f4a6b, 0x2e6b5d, 0xe3ddcb, 0x5d4037];
-  var BOTTOM_COLORS = [0x2f4a73, 0x22242a, 0x6b5b43, 0x4a4d52, 0x7a2e3a, 0x35424e, 0x8a7a5c];
+  // Clothing palettes: the game's own colours plus the Unity Pedestrian
+  // wardrobe (bright red / royal blue / leaf green / yellow / pink shirts,
+  // navy / charcoal / khaki trousers), so the crowd reads more varied.
+  var SHIRT_COLORS = [0xffffff, 0x2e4a6b, 0x7a2e2e, 0x3f6212, 0xd9d4c8, 0x22242a, 0xc96f2e, 0x4a5d8f, 0x8f4a6b, 0x2e6b5d, 0xe3ddcb, 0x5d4037, 0xcc3333, 0x264ca6, 0x33804d, 0xf2bf33, 0x40404d, 0xd973a6, 0xe6e6e0];
+  var BOTTOM_COLORS = [0x2f4a73, 0x22242a, 0x6b5b43, 0x4a4d52, 0x7a2e3a, 0x35424e, 0x8a7a5c, 0x1f2642, 0x333338, 0x8c8066, 0x1a1a1f];
   var peds = [];
   for (var pi = 0; pi < 24; pi++) {
     var onProm = pi < 9;
@@ -3651,16 +4082,18 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       dress: female && Math.random() < 0.4,
       bag: Math.random() < 0.3 ? [0x7a4a2c, 0x2e2e33, 0x8f2e3a, 0x2e4a6b][Math.floor(Math.random() * 4)] : null,
       shoes: [0xf0efe9, 0x22242a, 0x7a4a2c, 0xb03a2e][Math.floor(Math.random() * 4)],
-      hat: [0xd84a35, 0x2e4a6b, 0xe3ddcb, 0x22242a][Math.floor(Math.random() * 4)]
+      hat: [0xd84a35, 0x2e4a6b, 0xe3ddcb, 0x22242a][Math.floor(Math.random() * 4)],
+      longSleeve: Math.random() < 0.5
     });
     if (child) mesh.scale.setScalar(0.68);
+    else mesh.scale.setScalar(rand(0.93, 1.07));   // adults vary in height, like the Unity crowd (~0.92–1.08)
     var px = rand(-170, 170), pz = onProm ? rand(64, 75) : rand(-160, 50);
     if (!onProm) { px = Math.round(px / BLOCK) * BLOCK + (Math.random() < 0.5 ? 9.5 : -9.5); }
     mesh.position.set(px, 0.22, pz);
     scene.add(mesh);
     peds.push({
       mesh: mesh, axis: onProm ? "x" : "z", dir: Math.random() < 0.5 ? 1 : -1,
-      speed: rand(1.0, 1.8) * (child ? 1.15 : 1), phase: rand(0, 6), scared: 0,
+      speed: rand(1.1, 2.0) * (child ? 1.15 : 1), phase: rand(0, 6), scared: 0,
       limbs: mesh.userData
     });
   }
@@ -5350,12 +5783,12 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       }
       pd.phase += dt * (runAway ? 12 : 6.2) * (sp / 1.4);
       // real gait: legs swing opposite each other, arms counter-swing, body bobs
-      var sw = Math.sin(pd.phase) * (runAway ? 0.75 : 0.5);
+      var sw = Math.sin(pd.phase) * (runAway ? 0.75 : 0.59);   // 0.59 rad ≈ the Unity walker's 34° swing
       if (pd.limbs) {
         pd.limbs.legL.rotation.x = sw;
         pd.limbs.legR.rotation.x = -sw;
-        pd.limbs.armL.rotation.x = -sw * 0.7;
-        pd.limbs.armR.rotation.x = sw * 0.7;
+        pd.limbs.armL.rotation.x = -sw * 0.8;
+        pd.limbs.armR.rotation.x = sw * 0.8;
         if (pd.limbs.kneeL) {
           pd.limbs.kneeL.rotation.x = Math.max(0.04, Math.cos(pd.phase)) * 0.6;
           pd.limbs.kneeR.rotation.x = Math.max(0.04, -Math.cos(pd.phase)) * 0.6;

@@ -91,3 +91,8 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
   Smooth is cheapest and High is the old full look, and if the
   frame rate stays low the game lowers the resolution and then
   steps one graphics level down by itself, with a small message.
+- Unity zip 2 look: detailed tall towers with recessed dark-blue
+  glass, floor slabs, mullions, railed balconies, parapets and roof
+  plant; leafy forked-trunk street trees; a smooth lofted silver
+  supercar body with carved wheel arches, glass canopy and
+  twin-spoke wheels; and more detailed pedestrians.
