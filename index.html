@@ -671,13 +671,21 @@
       <p class="set-note">Balanced is the standard. If the game stays slow, it steps the picture down by itself to keep things smooth — raise it back here any time.</p>
     </div>
     <div class="set-row">
+      <div class="set-label">DAY / NIGHT<b>Daytime or night-time</b></div>
+      <div class="set-opts" id="set-daynight">
+        <button class="set-opt" type="button" data-set="daynight" data-val="day">Day — bright &amp; sunny</button>
+        <button class="set-opt" type="button" data-set="daynight" data-val="night">Night — dusk &amp; dark</button>
+      </div>
+      <p class="set-note">Day: midday sun high in a bright blue sky, lamps and headlights off. Night: the original dusk-into-night look — lit windows, glowing lamps and headlights. It switches instantly, right where you are, and nothing about your game is reset.</p>
+    </div>
+    <div class="set-row">
       <div class="set-label">CITY TIME<b>How fast the day passes</b></div>
       <div class="set-opts" id="set-time">
         <button class="set-opt" type="button" data-set="time" data-val="0">Paused</button>
         <button class="set-opt" type="button" data-set="time" data-val="1">Normal</button>
         <button class="set-opt" type="button" data-set="time" data-val="6">Fast ×6</button>
       </div>
-      <p class="set-note">Normal: 1 real second = 1 game minute, dusk to night as you play.</p>
+      <p class="set-note">Normal: 1 real second = 1 game minute. In Night mode the evening runs on into night; in Day mode the clock loops through the middle of the day so it stays bright.</p>
     </div>
     <div class="set-row">
       <div class="set-label">OPEN — SEPARATE<b>Map and profile, each on its own</b></div>
@@ -813,7 +821,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     mode: "foot",              // "foot" | "car"
     money: 0, respect: 0,
     wanted: 0, wantedTimer: 0, crimeCooldown: 0,
-    timeH: 18.25,              // game clock, hours — blue-hour dusk like the reference photo, warm windows glowing
+    timeH: 12.5,               // game clock, hours — Day mode is the default, so the city starts at bright midday (Night mode starts at 18.25, the blue-hour dusk)
     drivingVehicle: null,
     jobsDone: { story: false, race: false, taxi: false },
     shaken: 0,
@@ -4869,6 +4877,14 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var AC = null, engineOsc = null, engineGain = null, skidOsc = null, skidGain = null;
   // Settings (session-only, changed from the gear button top-right)
   var soundOn = true, timeScale = 1, graphicsQ = "balanced";
+  // Day / Night mode (Settings, gear button): "day" is the default — bright
+  // midday. "night" is the original look: the clock starts at 18:25 dusk
+  // and runs on into the night. updateSky derives the sky, sun, lamps,
+  // lit windows and headlights from the clock every frame, so switching
+  // mode only has to move the clock (see setDayNightMode) and the whole
+  // scene follows on the very next frame — nothing else is touched.
+  var dayNightMode = "day";
+  var DAY_START_H = 12.5, NIGHT_START_H = 18.25;
   function initAudio() {
     if (AC) { if (AC.state === "suspended") AC.resume(); return; }
     try {
@@ -6303,9 +6319,17 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       lastT = now;
       var tNow = now / 1000;
 
-      // clock: 1 real second = 1 game minute (× the Settings time speed)
+      // clock: 1 real second = 1 game minute (× the Settings time speed).
+      // Day mode: the clock still runs at that speed, but it loops through
+      // the late-morning / mid-afternoon hours (10:30–15:00), when the sun
+      // stays high — so Day mode stays in bright daylight for as long as
+      // it is on, instead of drifting into dusk. Night mode runs the
+      // original full cycle, from the 18:25 dusk on into the night.
       G.timeH += dt / 60 * timeScale;
-      if (G.timeH >= 24) G.timeH -= 24;
+      if (dayNightMode === "day") {
+        if (G.timeH >= 15) G.timeH -= 4.5;
+        else if (G.timeH < 10.5) G.timeH += 4.5;
+      } else if (G.timeH >= 24) G.timeH -= 24;
       updateSky(dt);
       updateShadowCasters(dt);
       perfFrame(rawDt);
@@ -6436,7 +6460,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   function resetGame() {
     G.money = 0; G.respect = 0; G.wanted = 0; G.wantedTimer = 0;
     G.jobsDone = { story: false, race: false, taxi: false };
-    G.over = false; G.mode = "foot"; G.drivingVehicle = null; G.timeH = 18.25;
+    G.over = false; G.mode = "foot"; G.drivingVehicle = null; G.timeH = DAY_START_H; dayNightMode = "day";
     M.active = null; hideTarget();
     forceExitInterior();
     if (raceCpMarker) { scene.remove(raceCpMarker); raceCpMarker = null; }
@@ -6768,6 +6792,21 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   profPanel.addEventListener("click", function (e) { if (e.target === profPanel) closeProfile(); });
 
   // ----- Settings (gear button, top right) -----
+  // Day / Night switch: moving the clock is all it takes — updateSky
+  // re-derives the sky, sun, sea, lamps, lit windows and headlights from
+  // G.timeH on the next frame, so the change is instant and live, and
+  // cash, respect, jobs, position and login are never touched.
+  function setDayNightMode(mode) {
+    dayNightMode = mode === "night" ? "night" : "day";
+    if (dayNightMode === "day") {
+      G.timeH = DAY_START_H;
+      toast("DAY MODE", "Bright midday — sun high, lamps and headlights off");
+    } else {
+      G.timeH = NIGHT_START_H;
+      toast("NIGHT MODE", "Dusk into night — windows, lamps and headlights glow");
+    }
+    updateHUD();
+  }
   function refreshSettings() {
     settingsPanel.querySelectorAll("[data-set]").forEach(function (b) {
       var kind = b.getAttribute("data-set"), val = b.getAttribute("data-val"), on = false;
@@ -6775,6 +6814,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       else if (kind === "camera") on = parseInt(val, 10) === camView;
       else if (kind === "carcamera") on = parseInt(val, 10) === carView;
       else if (kind === "graphics") on = val === graphicsQ;
+      else if (kind === "daynight") on = val === dayNightMode;
       else if (kind === "time") on = parseInt(val, 10) === timeScale;
       b.classList.toggle("on", on);
     });
@@ -6822,6 +6862,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         else if (graphicsQ === "balanced") toast("GRAPHICS — BALANCED", "Medium picture, smaller shadows — the smooth standard");
         else if (graphicsQ === "smooth") toast("GRAPHICS — SMOOTH", "Fastest picture, shadows off");
         else toast("GRAPHICS — HIGH", "Sharp picture with full shadows");
+      } else if (kind === "daynight") {
+        setDayNightMode(val);
       } else if (kind === "time") {
         timeScale = parseInt(val, 10);
         toast(timeScale === 0 ? "CITY TIME PAUSED" : (timeScale === 1 ? "CITY TIME — NORMAL" : "CITY TIME — FAST ×6"), "How fast the day passes");
