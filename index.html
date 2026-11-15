@@ -3371,6 +3371,14 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       g.add(box(0.3, 0.34, 0.12, mat(o.bag, 0.7, 0.05), 0.36, 0.92, 0.02));
       g.add(box(0.05, 0.5, 0.03, mat(o.bag, 0.7, 0.05), 0.3, 1.3, 0.02));
     }
+    if (o.backpack) { // backpack worn on the back: main pack, lid, front pocket and shoulder straps
+      var bpM = mat(o.backpack, 0.78, 0.05);
+      g.add(box(0.34, 0.46, 0.17, bpM, 0, 1.26, -0.25));
+      g.add(box(0.3, 0.11, 0.15, bpM, 0, 1.53, -0.25, false));
+      g.add(box(0.24, 0.2, 0.05, bpM, 0, 1.14, -0.35, false));
+      g.add(box(0.05, 0.36, 0.02, bpM, -0.13, 1.38, 0.15, false));
+      g.add(box(0.05, 0.36, 0.02, bpM, 0.13, 1.38, 0.15, false));
+    }
     g.add(head);
     g.userData = {
       legL: legL, legR: legR, armL: armL, armR: armR, head: head,
@@ -4031,8 +4039,144 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var startCar = makeVehicle(buildCar, 0x141519, 6, 58, 0.2, { beam: true }); // nose towards the beach: clear road ahead, grille faces the start camera
   var playerVehicles = [playerBike, playerCar, startCar];
 
+  // ---------- Varied traffic cars (generic, low-poly, procedural) ----------
+  // The traffic fleet is no longer ten copies of the hero's supercar:
+  // three plain generic types cycle through the spawn plan — a 4-door
+  // sedan, a muscle car and a low-poly drifter — each a simple low-poly
+  // body built from boxes in its own plain colours, with steering front
+  // wheels, spinning wheels and headlights / tail lights / indicators
+  // that the traffic and day-night updates drive exactly as before.
+  var TW_TIRE = mat(0x17181a, 0.92, 0);
+  var TW_RIM = mat(0xb9bec7, 0.3, 0.85);
+  var TW_SPOKE = mat(0x3a3e45, 0.45, 0.7);
+  var TW_GLASS = new THREE.MeshStandardMaterial({ color: 0x131c26, roughness: 0.12, metalness: 0.4, envMap: carEnv(), envMapIntensity: 1.0 });
+  var TW_DARK = mat(0x0c0d10, 0.8, 0.1);
+  var TW_CHROME = mat(0x9aa1ab, 0.25, 0.9);
+  function trafficPaint(color) {
+    return new THREE.MeshStandardMaterial({ color: color, roughness: 0.34, metalness: 0.5, envMap: carEnv(), envMapIntensity: 0.9 });
+  }
+  function trafficWheel(r, wdt) {
+    var steer = new THREE.Group(); steer.rotation.order = "YXZ";
+    var spin = new THREE.Group(); steer.add(spin);
+    var tire = new THREE.Mesh(new THREE.CylinderGeometry(r, r, wdt, 14).rotateZ(Math.PI / 2), TW_TIRE);
+    tire.castShadow = true; spin.add(tire);
+    var rim = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.58, r * 0.58, wdt + 0.02, 10).rotateZ(Math.PI / 2), TW_RIM);
+    spin.add(rim);
+    spin.add(box(wdt + 0.04, r * 0.2, r * 1.02, TW_SPOKE, 0, 0, 0, false));
+    spin.add(box(wdt + 0.04, r * 1.02, r * 0.2, TW_SPOKE, 0, 0, 0, false));
+    steer.userData.spin = spin;
+    steer.userData.radius = r;   // so the traffic update spins each wheel at its own rolling speed
+    return steer;
+  }
+  function trafficWheelSet(g, rF, wF, rR, wR, halfW, wz) {
+    var wheels = [];
+    [[-halfW, wz, rF, wF], [halfW, wz, rF, wF], [-halfW, -wz, rR, wR], [halfW, -wz, rR, wR]].forEach(function (p) {
+      var w = trafficWheel(p[2], p[3]); w.position.set(p[0], p[2], p[1]); g.add(w); wheels.push(w);
+    });
+    return wheels;
+  }
+  function trafficLamps() {
+    return {
+      hl: new THREE.MeshStandardMaterial({ color: 0xf6faff, emissive: 0xe4f0ff, emissiveIntensity: 0.25 }),
+      tl: new THREE.MeshStandardMaterial({ color: 0x7d1420, emissive: 0xff2233, emissiveIntensity: 1.1 }),
+      indL: new THREE.MeshStandardMaterial({ color: 0x2a1a05, emissive: 0xffa018, emissiveIntensity: 0 }),
+      indR: new THREE.MeshStandardMaterial({ color: 0x2a1a05, emissive: 0xffa018, emissiveIntensity: 0 })
+    };
+  }
+  function finishTrafficCar(g, L, lamps, wheels) {
+    var blob = new THREE.Mesh(new THREE.PlaneGeometry(2.7, L + 0.8), blobShadowMat());
+    blob.rotation.x = -Math.PI / 2; blob.position.y = 0.025; blob.renderOrder = 1; g.add(blob);
+    var poolMat = new THREE.MeshBasicMaterial({ map: poolTexture(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    var pool = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 5.6), poolMat);
+    pool.rotation.x = -Math.PI / 2; pool.position.set(0, 0.03, L / 2 + 2.4); pool.renderOrder = 2; g.add(pool);
+    g.userData = { wheels: wheels, beam: null, hl: lamps.hl, tl: lamps.tl, kind: "car", radius: 1.7, len: L, indL: lamps.indL, indR: lamps.indR, exh: null, poolMat: poolMat, cluster: null };
+    return g;
+  }
+  function buildTrafficSedan(color) {
+    var L = 4.6, g = new THREE.Group();
+    var paint = trafficPaint(color);
+    var lamps = trafficLamps();
+    g.add(box(1.82, 0.52, L, paint, 0, 0.56, 0));                          // main body
+    g.add(box(1.78, 0.14, 1.15, paint, 0, 0.86, 1.5));                     // bonnet shoulder
+    g.add(box(1.62, 0.5, 2.15, TW_GLASS, 0, 1.06, -0.2));                  // glasshouse
+    g.add(box(1.68, 0.07, 1.45, paint, 0, 1.34, -0.2));                    // roof
+    g.add(box(1.84, 0.07, 3.3, TW_DARK, 0, 0.42, 0, false));               // side skirt trim
+    g.add(box(1.86, 0.24, 0.28, TW_DARK, 0, 0.36, L / 2 + 0.02));          // front bumper
+    g.add(box(1.86, 0.24, 0.28, TW_DARK, 0, 0.36, -L / 2 - 0.02));         // rear bumper
+    g.add(box(1.0, 0.15, 0.06, TW_CHROME, 0, 0.64, L / 2 + 0.12, false));  // grille
+    g.add(box(0.42, 0.13, 0.05, lamps.hl, -0.62, 0.7, L / 2 + 0.13, false));
+    g.add(box(0.42, 0.13, 0.05, lamps.hl, 0.62, 0.7, L / 2 + 0.13, false));
+    g.add(box(0.44, 0.12, 0.05, lamps.tl, -0.6, 0.72, -L / 2 - 0.13, false));
+    g.add(box(0.44, 0.12, 0.05, lamps.tl, 0.6, 0.72, -L / 2 - 0.13, false));
+    g.add(box(0.18, 0.1, 0.05, lamps.indL, -0.84, 0.6, L / 2 + 0.12, false));
+    g.add(box(0.18, 0.1, 0.05, lamps.indR, 0.84, 0.6, L / 2 + 0.12, false));
+    g.add(box(0.18, 0.1, 0.05, lamps.indL, -0.84, 0.62, -L / 2 - 0.12, false));
+    g.add(box(0.18, 0.1, 0.05, lamps.indR, 0.84, 0.62, -L / 2 - 0.12, false));
+    g.add(box(0.16, 0.09, 0.1, paint, -0.97, 1.12, 0.62, false));          // mirrors
+    g.add(box(0.16, 0.09, 0.1, paint, 0.97, 1.12, 0.62, false));
+    var wheels = trafficWheelSet(g, 0.34, 0.24, 0.34, 0.24, 0.8, 1.45);
+    return finishTrafficCar(g, L, lamps, wheels);
+  }
+  function buildTrafficMuscle(color) {
+    var L = 4.9, g = new THREE.Group();
+    var paint = trafficPaint(color);
+    var stripe = mat(0x14151a, 0.5, 0.3);
+    var lamps = trafficLamps();
+    g.add(box(1.9, 0.5, L, paint, 0, 0.54, 0));                            // long low body
+    g.add(box(1.84, 0.13, 2.0, paint, 0, 0.85, 1.2));                      // long bonnet
+    g.add(box(0.62, 0.13, 0.85, TW_DARK, 0, 0.97, 1.25, false));           // bonnet scoop
+    g.add(box(1.6, 0.48, 1.75, TW_GLASS, 0, 1.04, -0.8));                  // cabin set well back
+    g.add(box(1.66, 0.07, 1.2, paint, 0, 1.31, -0.85));                    // roof
+    g.add(box(0.2, 0.22, 1.35, paint, -0.93, 0.72, -1.6));                 // rear haunches
+    g.add(box(0.2, 0.22, 1.35, paint, 0.93, 0.72, -1.6));
+    g.add(box(0.26, 0.02, 1.96, stripe, -0.17, 0.925, 1.2, false));        // racing stripes
+    g.add(box(0.26, 0.02, 1.96, stripe, 0.17, 0.925, 1.2, false));
+    g.add(box(0.26, 0.02, 1.16, stripe, -0.17, 1.355, -0.85, false));
+    g.add(box(0.26, 0.02, 1.16, stripe, 0.17, 1.355, -0.85, false));
+    g.add(box(1.72, 0.05, 0.34, TW_DARK, 0, 0.86, -2.32, false));          // boot lip spoiler
+    g.add(box(1.55, 0.2, 0.06, TW_DARK, 0, 0.56, L / 2 + 0.03, false));    // wide grille
+    g.add(box(0.34, 0.16, 0.05, lamps.hl, -0.7, 0.62, L / 2 + 0.05, false));
+    g.add(box(0.34, 0.16, 0.05, lamps.hl, 0.7, 0.62, L / 2 + 0.05, false));
+    g.add(box(1.55, 0.17, 0.05, lamps.tl, 0, 0.64, -L / 2 - 0.03, false)); // full-width tail panel
+    g.add(box(0.16, 0.09, 0.05, lamps.indL, -0.88, 0.48, L / 2 + 0.04, false));
+    g.add(box(0.16, 0.09, 0.05, lamps.indR, 0.88, 0.48, L / 2 + 0.04, false));
+    g.add(box(0.16, 0.09, 0.05, lamps.indL, -0.88, 0.46, -L / 2 - 0.04, false));
+    g.add(box(0.16, 0.09, 0.05, lamps.indR, 0.88, 0.46, -L / 2 - 0.04, false));
+    var wheels = trafficWheelSet(g, 0.35, 0.26, 0.39, 0.34, 0.82, 1.5);   // wider, taller rear tyres
+    return finishTrafficCar(g, L, lamps, wheels);
+  }
+  function buildTrafficDrifter(color) {
+    var L = 4.5, g = new THREE.Group();
+    var paint = trafficPaint(color);
+    var lamps = trafficLamps();
+    g.add(box(1.86, 0.42, L, paint, 0, 0.46, 0));                          // low flat body
+    var nose = box(1.8, 0.3, 1.25, paint, 0, 0.66, 1.55); nose.rotation.x = 0.16; g.add(nose); // sloped nose wedge
+    g.add(box(1.55, 0.42, 1.85, TW_GLASS, 0, 0.9, -0.35));                 // glass cabin
+    g.add(box(1.52, 0.06, 1.05, TW_DARK, 0, 1.14, -0.4));                  // dark roof panel
+    g.add(box(0.14, 0.3, 1.15, paint, -0.96, 0.52, 1.38));                 // wide fender flares
+    g.add(box(0.14, 0.3, 1.15, paint, 0.96, 0.52, 1.38));
+    g.add(box(0.14, 0.3, 1.15, paint, -0.96, 0.52, -1.38));
+    g.add(box(0.14, 0.3, 1.15, paint, 0.96, 0.52, -1.38));
+    g.add(box(0.07, 0.15, 2.0, TW_DARK, -0.95, 0.2, 0, false));            // side skirts
+    g.add(box(0.07, 0.15, 2.0, TW_DARK, 0.95, 0.2, 0, false));
+    g.add(box(1.92, 0.06, 0.42, TW_DARK, 0, 0.15, L / 2 + 0.05, false));   // front splitter
+    g.add(box(0.06, 0.34, 0.06, TW_DARK, -0.62, 1.0, -2.02, false));       // wing struts
+    g.add(box(0.06, 0.34, 0.06, TW_DARK, 0.62, 1.0, -2.02, false));
+    g.add(box(1.94, 0.05, 0.44, TW_DARK, 0, 1.2, -2.06));                  // big rear wing
+    g.add(box(0.52, 0.08, 0.05, lamps.hl, -0.56, 0.62, L / 2 + 0.02, false)); // slim LED strips
+    g.add(box(0.52, 0.08, 0.05, lamps.hl, 0.56, 0.62, L / 2 + 0.02, false));
+    g.add(box(1.5, 0.09, 0.05, lamps.tl, 0, 0.6, -L / 2 - 0.02, false));   // rear light bar
+    g.add(box(0.16, 0.08, 0.05, lamps.indL, -0.86, 0.5, L / 2 + 0.02, false));
+    g.add(box(0.16, 0.08, 0.05, lamps.indR, 0.86, 0.5, L / 2 + 0.02, false));
+    g.add(box(0.16, 0.08, 0.05, lamps.indL, -0.86, 0.48, -L / 2 - 0.02, false));
+    g.add(box(0.16, 0.08, 0.05, lamps.indR, 0.86, 0.48, -L / 2 - 0.02, false));
+    var wheels = trafficWheelSet(g, 0.36, 0.3, 0.36, 0.3, 0.84, 1.42);
+    return finishTrafficCar(g, L, lamps, wheels);
+  }
+
   // ---------- Traffic ----------
-  // Photo-style supercars drive the city roads (same car as the hero's).
+  // Generic low-poly cars drive the city roads: sedans, muscle cars and
+  // drifters cycling through the plan below, each in plain colours.
   // Lanes sit on the free road corridors; vertical roads are two-way and
   // switch lane when they turn round at the end, horizontal roads are
   // two-way too. Police cars stay removed.
@@ -4046,9 +4190,16 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       [false, 22, 1, -120, 12], [false, 22, -1, 100, 10],
       [false, -66, -1, 60, 11], [false, -110, 1, -50, 9]
     ];
-    plan.forEach(function (p) {
+    var builders = [buildTrafficSedan, buildTrafficMuscle, buildTrafficDrifter];
+    var palette = [
+      [0x8a3038, 0x2e4a6b, 0xd9d4c8, 0x3f6212],   // sedan colours
+      [0xb03a2e, 0x22242a, 0xe0a83d, 0x264ca6],   // muscle colours
+      [0xd973a6, 0x2e7a5d, 0xf2bf33, 0x4a5d8f]    // drifter colours
+    ];
+    plan.forEach(function (p, i) {
       var vertical = p[0], centre = p[1], dir = p[2];
-      var mesh = buildCar(0x141519, {});
+      var type = i % 3;
+      var mesh = builders[type](palette[type][Math.floor(i / 3) % 4]);
       scene.add(mesh);
       // right-hand traffic: heading +z keeps to -x, heading +x keeps to +z
       var lane = vertical ? centre + (dir > 0 ? -2.3 : 2.3) : centre + (dir > 0 ? 2.3 : -2.3);
@@ -4081,12 +4232,13 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       hairStyle: female ? [2, 3, 4][Math.floor(Math.random() * 3)] : [1, 1, 4, 0][Math.floor(Math.random() * 4)],
       dress: female && Math.random() < 0.4,
       bag: Math.random() < 0.3 ? [0x7a4a2c, 0x2e2e33, 0x8f2e3a, 0x2e4a6b][Math.floor(Math.random() * 4)] : null,
+      backpack: Math.random() < 0.35 ? [0xb03a2e, 0x2e4a6b, 0x3f6212, 0xe0a83d, 0x22242a, 0xd973a6][Math.floor(Math.random() * 6)] : null,
       shoes: [0xf0efe9, 0x22242a, 0x7a4a2c, 0xb03a2e][Math.floor(Math.random() * 4)],
       hat: [0xd84a35, 0x2e4a6b, 0xe3ddcb, 0x22242a][Math.floor(Math.random() * 4)],
       longSleeve: Math.random() < 0.5
     });
     if (child) mesh.scale.setScalar(0.68);
-    else mesh.scale.setScalar(rand(0.93, 1.07));   // adults vary in height, like the Unity crowd (~0.92–1.08)
+    else mesh.scale.setScalar(rand(0.9, 1.1));   // adults vary in height, like the Unity crowd (~0.92–1.08)
     var px = rand(-170, 170), pz = onProm ? rand(64, 75) : rand(-160, 50);
     if (!onProm) { px = Math.round(px / BLOCK) * BLOCK + (Math.random() < 0.5 ? 9.5 : -9.5); }
     mesh.position.set(px, 0.22, pz);
@@ -5740,7 +5892,6 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         t.mesh.position.set(t.pos, 0, t.lane);
         t.mesh.rotation.y = t.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
       }
-      var spin = t.speed * dt / 0.42;
       // Traffic front wheels steer into the U-turn at the end of a
       // vertical run: they wind on as the car nears the end, stay turned
       // while it turns around, then ease back to straight on the new run.
@@ -5750,7 +5901,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       if (t.steerVis == null) t.steerVis = 0;
       t.steerVis = lerp(t.steerVis, tTarget, 1 - Math.pow(0.0005, dt));
       t.mesh.userData.wheels.forEach(function (w, wi) {
-        (w.userData.spin || w).rotation.x += spin;
+        (w.userData.spin || w).rotation.x += t.speed * dt / (w.userData.radius || 0.42);
         if (wi < 2) w.rotation.y = t.steerVis;
       });
       if (t.mesh.userData.steerWheel) t.mesh.userData.steerWheel.rotation.z = -t.steerVis * 2.6;

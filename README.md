@@ -56,8 +56,14 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
   hero's home. Both have a hexagonal grille, a fixed carbon rear wing, slim
   white LED headlights, silver wheels, and a detailed interior with a live
   digital dashboard. No "63" badge.
-- Traffic is back: 10 bright silver supercars drive the city roads in both
-  directions. No police cars.
+- Traffic is back — and varied: 10 cars drive the city roads in both
+  directions, cycling through three generic types — a plain 4-door sedan,
+  a muscle car and a low-poly drifter — each in its own plain colours,
+  with steering front wheels, spinning wheels and headlights at night.
+  No police cars.
+- Pedestrians are more varied too: men and women, different heights
+  (including children), more clothes colours and hairstyles, dresses,
+  shoulder bags and backpacks — same walkers, paths and speeds.
 - A blue bike, rideable on the beachfront.
 - The hero's own separate home, east of the city, marked HOME in gold on the
   map: a modern two-storey white house with a cantilevered warm-lit glass
