@@ -94,6 +94,21 @@
     padding: 8px 16px; font-size: 14px; display: none; white-space: nowrap;
   }
   #prompt b { color: var(--amber); }
+  /* Car controls — a small panel shown automatically while driving the
+     car, hidden again on foot. Bottom-left on desktop, clear of the
+     road view; on touch screens it stacks above the speedometer instead,
+     so it never covers the steering buttons. */
+  #car-help {
+    position: absolute; left: 12px; bottom: calc(14px + env(safe-area-inset-bottom));
+    width: 232px; padding: 9px 12px 10px; display: none; text-align: left;
+  }
+  #car-help .car-help-title { font-size: 9px; font-weight: 800; letter-spacing: .22em; color: var(--cyan); margin-bottom: 5px; }
+  .car-help-row { display: flex; gap: 9px; align-items: center; padding: 3px 0; font-size: 12px; line-height: 1.35; color: rgba(244,241,234,.94); }
+  .car-help-row .control-keys { width: 88px; }
+  .car-help-row .control-keys b { font-size: 11px; padding: 0 5px; }
+  @media (pointer: coarse) {
+    #car-help { left: auto; right: 12px; bottom: calc(272px + env(safe-area-inset-bottom)); width: 212px; }
+  }
 
   /* ---------- Touch controls ---------- */
   #touch { position: fixed; inset: 0; z-index: 6; pointer-events: none; display: none; }
@@ -179,6 +194,28 @@
     line-height: 1; margin-top: 1px; margin-left: .12em; white-space: nowrap;
   }
   #settings-toggle.is-open { border-color: var(--pink); background: rgba(40, 8, 26, .92); box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 14px rgba(255,46,136,.35); }
+  /* Help button — small round "?" circle under Settings, top right. The
+     instructions live in the game now (not on the start screen): tapping
+     this circle opens the full controls panel, tapping again hides it. */
+  #help-toggle {
+    position: fixed; right: 10px; top: calc(70px + env(safe-area-inset-top)); z-index: 28;
+    width: 54px; height: 54px; border-radius: 50%; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 0;
+    background: rgba(10, 12, 26, .88); border: 2px solid var(--cyan); color: var(--ink);
+    box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 14px rgba(25,211,230,.35);
+    cursor: pointer; pointer-events: auto; padding: 0; font-family: inherit;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  #help-toggle:active { transform: scale(.96); }
+  #help-toggle .help-q { font-size: 22px; font-weight: 900; line-height: 1; color: #fff; }
+  #help-toggle .side-toggle-label {
+    font-size: 6.5px; font-weight: 800; letter-spacing: .12em; color: var(--cyan);
+    line-height: 1; margin-top: 1px; margin-left: .12em; white-space: nowrap;
+  }
+  #help-toggle.is-open { border-color: var(--pink); background: rgba(40, 8, 26, .92); box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 14px rgba(255,46,136,.35); }
+  #help-toggle.is-open .side-toggle-label { color: #ff8fbe; }
+  /* The instructions panel reuses the controls rows, flattened into the panel */
+  #help-panel .controls-card { margin: 10px 0 0; width: 100%; background: transparent; border: 0; box-shadow: none; backdrop-filter: none; padding: 4px 0 0; }
   /* The two separate left panels: map-only and profile-only */
   .side-ui {
     position: fixed; left: 10px; top: calc(134px + env(safe-area-inset-top)); z-index: 27; display: none;
@@ -243,6 +280,7 @@
     .side-toggle { width: 50px; height: 50px; }
     #profile-toggle { top: calc(66px + env(safe-area-inset-top)); }
     #settings-toggle { width: 50px; height: 50px; }
+    #help-toggle { width: 50px; height: 50px; top: calc(66px + env(safe-area-inset-top)); }
     #hud-top { left: 68px; right: 68px; }
     body.dock-open #hud-top { left: 68px; }
     .side-ui { width: min(212px, 54vw); max-height: 52dvh; top: calc(124px + env(safe-area-inset-top)); }
@@ -259,12 +297,12 @@
   .map-ui-btn:active { background: rgba(255,46,136,.4); }
   #bag-badge { background: var(--pink); color: #fff; border-radius: 999px; padding: 0 6px; margin-left: 2px; font-size: 10px; }
   #boost-line { display: none; margin-top: 6px; font-size: 10.5px; font-weight: 700; color: #7dff9a; letter-spacing: .04em; }
-  #map-panel, #profile-panel, #settings-panel {
+  #map-panel, #profile-panel, #settings-panel, #help-panel {
     position: fixed; inset: 0; z-index: 31; display: none; align-items: flex-end; justify-content: center;
     background: rgba(3,0,10,.72); padding: 14px;
   }
-  #map-panel.open, #profile-panel.open, #settings-panel.open { display: flex; }
-  @media (min-width: 640px) { #map-panel, #profile-panel, #settings-panel { align-items: center; } }
+  #map-panel.open, #profile-panel.open, #settings-panel.open, #help-panel.open { display: flex; }
+  @media (min-width: 640px) { #map-panel, #profile-panel, #settings-panel, #help-panel { align-items: center; } }
   /* Settings rows */
   .set-row { margin-top: 16px; }
   .set-row:first-of-type { margin-top: 8px; }
@@ -453,6 +491,14 @@
   <div id="inside-label" class="plate"></div>
   <div id="toast"></div>
   <div id="speedo" class="plate"><div id="speed">0</div><div id="speed-unit">KM/H</div></div>
+  <div id="car-help" class="plate" aria-label="Car controls">
+    <div class="car-help-title" id="car-help-title">DRIVING</div>
+    <div class="car-help-row"><span class="control-keys"><b>W</b><b>S</b><b>↑</b><b>↓</b></span><span>Drive forward / reverse</span></div>
+    <div class="car-help-row"><span class="control-keys"><b>A</b><b>D</b><b>←</b><b>→</b></span><span>Steer left / right</span></div>
+    <div class="car-help-row"><span class="control-keys"><b>Space</b></span><span>Handbrake</span></div>
+    <div class="car-help-row"><span class="control-keys"><b>C</b></span><span>Camera view</span></div>
+    <div class="car-help-row"><span class="control-keys"><b>E</b></span><span id="car-help-exit">Exit the car</span></div>
+  </div>
   <div id="prompt" class="plate"></div>
 </div>
 
@@ -497,6 +543,11 @@
     <path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1"/>
   </svg>
   <span class="side-toggle-label">SET</span>
+</button>
+
+<button id="help-toggle" type="button" aria-label="Show game instructions" aria-expanded="false" aria-controls="help-panel" title="How to play — instructions">
+  <span class="help-q" aria-hidden="true">?</span>
+  <span class="side-toggle-label">HELP</span>
 </button>
 
 <div id="profile-ui" class="side-ui">
@@ -700,22 +751,31 @@
   </div>
 </div>
 
+<div id="help-panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="gh-card">
+    <h2 id="help-title">How to <span>play</span></h2>
+    <div class="controls-card" aria-label="Game controls">
+      <div class="control-row"><span class="control-keys"><b>W</b><b>A</b><b>S</b><b>D</b></span><span>Move · Drive car / ride bike (A = left, D = right)</span></div>
+      <div class="control-row"><span class="control-keys"><b>Shift</b></span><span>Run</span></div>
+      <div class="control-row"><span class="control-keys"><b>Space</b></span><span>Jump · Handbrake in car / bike</span></div>
+      <div class="control-row"><span class="control-keys"><b>E</b></span><span>Enter / exit car or bike · Enter building</span></div>
+      <div class="control-row"><span class="control-keys"><b>C</b></span><span>— camera: on foot Front / Top / Person's view · in the car Front / Mirror / Door / Top</span></div>
+      <div class="control-row"><span class="control-keys"><b>Mouse</b></span><span>— move to look around (no click)</span></div>
+      <div class="control-row"><span class="control-keys"><b>M</b></span><span>Map</span></div>
+      <div class="control-row"><span class="control-keys"><b>P</b></span><span>Profile</span></div>
+      <div class="control-row"><span class="control-keys"><b>B</b></span><span>Backpack</span></div>
+      <div class="control-row"><span class="control-keys"><b>Jobs</b></span><span>Walk to a glowing marker to start a job — package run, beach race, taxi</span></div>
+      <div class="control-row"><span class="control-keys"><b>⚙ Top-right</b></span><span>Settings</span></div>
+      <p class="controls-phone">On a phone, use the on-screen buttons and the CAMERA button. While you drive, the car controls appear on screen by themselves.</p>
+    </div>
+    <div class="gh-row" style="justify-content:flex-start;">
+      <button class="gh-btn primary" id="close-help" type="button">Close — back to game</button>
+    </div>
+  </div>
+</div>
+
 <div id="start-screen" class="screen">
   <h1 class="game-title">Neon Bay</h1>
-  <div class="controls-card" aria-label="Game controls">
-    <div class="controls-title">CONTROLS</div>
-    <div class="control-row"><span class="control-keys"><b>W</b><b>A</b><b>S</b><b>D</b></span><span>Move · Drive car / ride bike (A = left, D = right)</span></div>
-    <div class="control-row"><span class="control-keys"><b>Shift</b></span><span>Run</span></div>
-    <div class="control-row"><span class="control-keys"><b>Space</b></span><span>Jump · Handbrake in car / bike</span></div>
-    <div class="control-row"><span class="control-keys"><b>E</b></span><span>Enter / exit car or bike · Enter building</span></div>
-    <div class="control-row"><span class="control-keys"><b>C</b></span><span>— camera: on foot Front / Top / Person's view · in the car Front / Mirror / Door / Top</span></div>
-    <div class="control-row"><span class="control-keys"><b>Mouse</b></span><span>— move to look around (no click)</span></div>
-    <div class="control-row"><span class="control-keys"><b>M</b></span><span>Map</span></div>
-    <div class="control-row"><span class="control-keys"><b>P</b></span><span>Profile</span></div>
-    <div class="control-row"><span class="control-keys"><b>B</b></span><span>Backpack</span></div>
-    <div class="control-row"><span class="control-keys"><b>⚙ Top-right</b></span><span>Settings</span></div>
-    <p class="controls-phone">On a phone, use the on-screen buttons and the CAMERA button.</p>
-  </div>
   <div class="auth-card" id="auth-card" aria-label="Your Neon Bay account">
     <div class="auth-title">YOUR ACCOUNT</div>
     <p class="auth-sub" id="auth-sub">Sign in to save your cash, respect, jobs and profile — they load again on any device. Playing without an account works too; progress then lasts for this session only.</p>
@@ -4922,7 +4982,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   var el = function (id) { return document.getElementById(id); };
   var hudEl = el("hud"), moneyEl = el("money"), starsEl = el("stars"),
       clockEl = el("clock"), bannerEl = el("mission-banner"), toastEl = el("toast"),
-      speedoEl = el("speedo"), speedEl = el("speed"), promptEl = el("prompt"),
+      speedoEl = el("speedo"), speedEl = el("speed"), promptEl = el("prompt"), carHelpEl = el("car-help"),
       markerInfoEl = el("marker-info"), respectFill = el("respect-fill"),
       respectVal = el("respect-val"), touchEl = el("touch");
   var toastTimer = null;
@@ -5506,6 +5566,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       heroState.heading = v.heading;
       hero.visible = true;
       speedoEl.style.display = "none";
+      carHelpEl.style.display = "none";
       if (engineGain) engineGain.gain.value = 0;
       if (skidGain) skidGain.gain.value = 0;
       sndClick();
@@ -5523,6 +5584,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         refreshViewLabel();
         hero.visible = false;
         speedoEl.style.display = "block";
+        // Car instructions appear by themselves while driving the car
+        if (best.kind === "car") carHelpEl.style.display = "block";
         sndClick();
       }
     }
@@ -6453,6 +6516,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     el("map-toggle").style.display = "flex";
     el("profile-toggle").style.display = "flex";
     el("settings-toggle").style.display = "flex";
+    el("help-toggle").style.display = "flex";
     refreshMarkers();
     updateObjectiveIdle();
     updateHUD();
@@ -6488,6 +6552,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       c.heading = c.home.h; c.mesh.rotation.y = c.home.h; c.speed = 0;
     });
     speedoEl.style.display = "none";
+    carHelpEl.style.display = "none";
     actBtnLabel = "ENTER<br/>BIKE"; el("btn-act").innerHTML = actBtnLabel;
     el("end-screen").style.display = "none";
     refreshMarkers(); updateObjectiveIdle(); updateHUD();
@@ -6665,12 +6730,12 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   function carryingPackage() { return M.active === "story" && M.stage === 2; }
   function bagSlots() { return bagItems.length + (carryingPackage() ? 1 : 0); }
 
-  var mapPanel = el("map-panel"), profPanel = el("profile-panel"), settingsPanel = el("settings-panel");
-  function openMap() { if (!G.started) return; profPanel.classList.remove("open"); settingsPanel.classList.remove("open"); el("settings-toggle").classList.remove("is-open"); mapPanel.classList.add("open"); drawMap(el("bigmap"), true); refreshMapText(); }
+  var mapPanel = el("map-panel"), profPanel = el("profile-panel"), settingsPanel = el("settings-panel"), helpPanel = el("help-panel");
+  function openMap() { if (!G.started) return; profPanel.classList.remove("open"); settingsPanel.classList.remove("open"); el("settings-toggle").classList.remove("is-open"); closeHelp(); mapPanel.classList.add("open"); drawMap(el("bigmap"), true); refreshMapText(); }
   function closeMap() { mapPanel.classList.remove("open"); }
   function openProfile(toBag) {
     if (!G.started) return;
-    mapPanel.classList.remove("open"); settingsPanel.classList.remove("open"); el("settings-toggle").classList.remove("is-open");
+    mapPanel.classList.remove("open"); settingsPanel.classList.remove("open"); el("settings-toggle").classList.remove("is-open"); closeHelp();
     renderBag(); refreshProfile();
     profPanel.classList.add("open");
     if (toBag) { var bs = el("bag-section"); if (bs) bs.scrollIntoView({ block: "start" }); }
@@ -6826,7 +6891,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   }
   function openSettings() {
     if (!G.started) return;
-    mapPanel.classList.remove("open"); profPanel.classList.remove("open");
+    mapPanel.classList.remove("open"); profPanel.classList.remove("open"); closeHelp();
     refreshSettings();
     settingsPanel.classList.add("open");
     el("settings-toggle").classList.add("is-open");
@@ -6880,22 +6945,47 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   el("set-open-map").addEventListener("click", function () { initAudio(); closeSettings(); setMapUi(true); sndClick(); });
   el("set-open-profile").addEventListener("click", function () { initAudio(); closeSettings(); openProfile(true); sndClick(); });
 
+  // ----- Help (round "?" circle, top right, under Settings) -----
+  // The instructions that used to sit on the start screen live here now:
+  // tap the "?" circle to read the full controls mid-game; tap it again,
+  // tap Close, tap outside the card, or press Escape to hide them.
+  function openHelp() {
+    if (!G.started) return;
+    mapPanel.classList.remove("open"); profPanel.classList.remove("open"); closeSettings();
+    helpPanel.classList.add("open");
+    el("help-toggle").classList.add("is-open");
+    el("help-toggle").setAttribute("aria-expanded", "true");
+  }
+  function closeHelp() {
+    helpPanel.classList.remove("open");
+    el("help-toggle").classList.remove("is-open");
+    el("help-toggle").setAttribute("aria-expanded", "false");
+  }
+  el("help-toggle").addEventListener("click", function () {
+    initAudio();
+    if (helpPanel.classList.contains("open")) closeHelp(); else openHelp();
+    sndClick();
+  });
+  el("close-help").addEventListener("click", function () { initAudio(); closeHelp(); sndClick(); });
+  helpPanel.addEventListener("click", function (e) { if (e.target === helpPanel) closeHelp(); });
+
   window.addEventListener("keydown", function (e) {
     if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
     if (!G.started) return;
     if (e.code === "KeyM") { mapPanel.classList.contains("open") ? closeMap() : openMap(); }
     else if (e.code === "KeyP") { profPanel.classList.contains("open") ? closeProfile() : openProfile(false); }
     else if (e.code === "KeyB") { profPanel.classList.contains("open") ? closeProfile() : openProfile(true); }
-    else if (e.code === "Escape") { closeMap(); closeProfile(); closeSettings(); closeSideUis(); }
+    else if (e.code === "Escape") { closeMap(); closeProfile(); closeSettings(); closeHelp(); closeSideUis(); }
   });
 
   // Live sync: minimap, boost countdown, parcel-in-hand, open panels
-  var sideToggleIds = ["map-toggle", "profile-toggle", "settings-toggle"];
+  var sideToggleIds = ["map-toggle", "profile-toggle", "settings-toggle", "help-toggle"];
   setInterval(function () {
     if (!G.started || G.over) {
       sideToggleIds.forEach(function (id) { el(id).style.display = "none"; });
       if (mapUiOpen || profileUiOpen) closeSideUis();
       if (settingsPanel.classList.contains("open")) closeSettings();
+      if (helpPanel.classList.contains("open")) closeHelp();
       return;
     }
     sideToggleIds.forEach(function (id) { if (el(id).style.display !== "flex") el(id).style.display = "flex"; });
@@ -6942,7 +7032,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     resetGameOrig();
     bagItems.forEach(function (it) { if (it.qty != null) it.qty = 2; });
     G.boostT = 0; mapPing.t = 0;
-    closeMap(); closeProfile(); closeSettings(); closeSideUis();
+    closeMap(); closeProfile(); closeSettings(); closeHelp(); closeSideUis();
   };
 
   // ---------- GitHub Pages panel ----------

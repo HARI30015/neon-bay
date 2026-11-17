@@ -34,7 +34,12 @@ Once installed, the game opens fullscreen from your home screen / app list.
 
 ## How to play
 
-Start screen shows only the title, a CONTROLS card and START PLAYING.
+Start screen shows only the title, the ACCOUNT card, START PLAYING and
+INSTALL GAME — no instructions card. In the game, tap the small round
+"?" HELP circle (top-right, under the Settings gear) to read the full
+instructions; while driving a car, a small car-controls panel appears
+by itself (W/S forward/reverse, A/D steer, Space handbrake, C camera,
+E exit) and disappears when you get out.
 
 - WASD move · Shift run · Space jump
 - Mouse — move to look around (no click, no drag, no pointer lock)
