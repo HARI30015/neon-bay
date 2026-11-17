@@ -55,7 +55,11 @@ Start screen shows only the title, a CONTROLS card and START PLAYING.
   hero's start point (nose towards the beach), one on the forecourt of the
   hero's home. Both have a hexagonal grille, a fixed carbon rear wing, slim
   white LED headlights, silver wheels, and a detailed interior with a live
-  digital dashboard. No "63" badge.
+  digital dashboard. No "63" badge. The supercar body now uses real model
+  geometry (window.CAR_DATA): profile-fitted mirrors and door handles,
+  refitted cabin, wheels with brake discs, spokes and calipers, an active
+  rear wing that rises with speed and under braking, and wheel spin matched
+  to the 0.37 m wheel radius.
 - Traffic is back — and varied: 10 cars drive the city roads in both
   directions, cycling through three generic types — a plain 4-door sedan,
   a muscle car and a low-poly drifter — each in its own plain colours,
