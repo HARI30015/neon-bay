@@ -214,6 +214,54 @@
   }
   #help-toggle.is-open { border-color: var(--pink); background: rgba(40, 8, 26, .92); box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 14px rgba(255,46,136,.35); }
   #help-toggle.is-open .side-toggle-label { color: #ff8fbe; }
+  /* Full-screen button — a small round glass circle visible on EVERY
+     screen (start screen and in the game). Desktop: it joins the
+     top-right corner stack under Settings and Help, so it never covers
+     either of them. Phones: it moves to the bottom-right corner, clear
+     of the top-right Settings button. Every position rule is !important
+     (and the button also carries an inline position:fixed style plus a
+     data-no-glass escape hatch) so no other button styling can ever
+     drag it back into the page flow. */
+  #fullscreen-toggle {
+    position: fixed !important;
+    top: calc(132px + env(safe-area-inset-top)) !important;
+    right: 10px !important;
+    bottom: auto !important;
+    left: auto !important;
+    z-index: 60 !important;
+    width: 54px; height: 54px; border-radius: 50%;
+    display: flex !important;
+    flex-direction: column; align-items: center; justify-content: center; gap: 0;
+    background: rgba(10, 12, 26, .55);
+    -webkit-backdrop-filter: blur(8px) saturate(150%);
+    backdrop-filter: blur(8px) saturate(150%);
+    border: 1.5px solid rgba(255,255,255,.38); color: var(--ink);
+    box-shadow: 0 6px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.25);
+    cursor: pointer; pointer-events: auto; padding: 0; font-family: inherit;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  #fullscreen-toggle:active { transform: scale(.96); }
+  #fullscreen-toggle .fs-label {
+    font-size: 6.5px; font-weight: 800; letter-spacing: .12em; color: rgba(244,241,234,.85);
+    line-height: 1; margin-top: 1px; margin-left: .12em; white-space: nowrap;
+  }
+  #fullscreen-toggle .fs-exit { display: none; }
+  #fullscreen-toggle.is-fullscreen .fs-enter { display: none; }
+  #fullscreen-toggle.is-fullscreen .fs-exit { display: block; }
+  #fullscreen-toggle.is-fullscreen { border-color: var(--cyan); box-shadow: 0 6px 20px rgba(0,0,0,.45), 0 0 14px rgba(25,211,230,.35); }
+  @media (max-width: 919px) {
+    #fullscreen-toggle {
+      width: 50px; height: 50px;
+      top: auto !important;
+      bottom: calc(14px + env(safe-area-inset-bottom)) !important;
+      right: 12px !important;
+    }
+  @media (max-width: 919px) and (pointer: coarse) {
+    /* Real touch phones, in the game: the drive buttons fill the very
+       corner, so the circle rests just above them — still bottom-right,
+       and it never covers a driving control. */
+    body.fs-playing #fullscreen-toggle { bottom: calc(178px + env(safe-area-inset-bottom)) !important; }
+  }
   /* The instructions panel reuses the controls rows, flattened into the panel */
   #help-panel .controls-card { margin: 10px 0 0; width: 100%; background: transparent; border: 0; box-shadow: none; backdrop-filter: none; padding: 4px 0 0; }
   /* The two separate left panels: map-only and profile-only */
@@ -549,6 +597,61 @@
   <span class="help-q" aria-hidden="true">?</span>
   <span class="side-toggle-label">HELP</span>
 </button>
+
+<button id="fullscreen-toggle" data-no-glass type="button" aria-label="Enter full screen" aria-pressed="false" title="Full screen" style="position: fixed !important; z-index: 60 !important;">
+  <svg class="fs-enter" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>
+  </svg>
+  <svg class="fs-exit" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20"/>
+  </svg>
+  <span class="fs-label">FULL</span>
+</button>
+
+<script>
+(function () {
+  var btn = document.getElementById("fullscreen-toggle");
+  if (!btn) return;
+  function isFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function sync() {
+    var on = isFs();
+    btn.classList.toggle("is-fullscreen", on);
+    btn.setAttribute("aria-label", on ? "Exit full screen" : "Enter full screen");
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = on ? "Exit full screen" : "Full screen";
+  }
+  btn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+  btn.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isFs()) {
+      var exitFn = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exitFn) { var ep = exitFn.call(document); if (ep && ep.catch) ep.catch(function () {}); }
+    } else {
+      var root = document.documentElement;
+      var reqFn = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (reqFn) {
+        try {
+          var rp = reqFn.call(root, { navigationUI: "hide" });
+          if (rp && rp.catch) rp.catch(function () { try { reqFn.call(root); } catch (err) {} });
+        } catch (err) { try { reqFn.call(root); } catch (e2) {} }
+      }
+    }
+    setTimeout(sync, 80);
+  });
+  document.addEventListener("fullscreenchange", sync);
+  document.addEventListener("webkitfullscreenchange", sync);
+  sync();
+  // On touch phones, while the game is running, the button lifts above
+  // the drive buttons (see the body.fs-playing rule in the stylesheet).
+  var startEl = document.getElementById("start-screen");
+  var endEl = document.getElementById("end-screen");
+  setInterval(function () {
+    var playing = !!(startEl && startEl.style.display === "none" && !(endEl && endEl.style.display === "flex"));
+    document.body.classList.toggle("fs-playing", playing);
+  }, 400);
+})();
+</script>
 
 <div id="profile-ui" class="side-ui">
   <div class="side-bar plate">

@@ -39,7 +39,10 @@ INSTALL GAME — no instructions card. In the game, tap the small round
 "?" HELP circle (top-right, under the Settings gear) to read the full
 instructions; while driving a car, a small car-controls panel appears
 by itself (W/S forward/reverse, A/D steer, Space handbrake, C camera,
-E exit) and disappears when you get out.
+E exit) and disappears when you get out. A small round full-screen
+circle (⛶, labelled FULL) sits top-right on the start screen and below
+the "?" circle in the game — one tap hides the browser top bar and the
+taskbar, tap again or Esc to come out, and the icon changes.
 
 - WASD move · Shift run · Space jump
 - Mouse — move to look around (no click, no drag, no pointer lock)
