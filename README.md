@@ -24,8 +24,9 @@ Once installed, the game opens fullscreen from your home screen / app list.
 
 ## What is in this repo
 
-- `index.html` — the whole game in one file (about 3.9 MB). It contains the
-  city, buildings, interiors, landmarks, the supercar, the bike, people, jobs,
+- `index.html` — the whole game in one file (about 4.4 MB). It contains the
+  city, 20 colonies, the train and stations, two airports, highways,
+  buildings, interiors, landmarks, the supercar, the bike, people, jobs,
   camera views and install support. That is why there are no separate source
   folders: the game was built as a single-file web game.
 - `.nojekyll` — intentionally empty. It is a marker file that tells GitHub
@@ -117,3 +118,17 @@ taskbar, tap again or Esc to come out, and the icon changes.
   plant; leafy forked-trunk street trees; a smooth lofted silver
   supercar body with carved wheel arches, glass canopy and
   twin-spoke wheels; and more detailed pedestrians.
+- World expansion: 20 colonies named after USA streets, grouped by
+  city — Los Angeles (Sunset Boulevard, Hollywood Boulevard, Melrose
+  Avenue, Rodeo Drive), New York (Fifth Avenue, Broadway, Wall
+  Street), New Orleans (Bourbon Street, Canal Street), San Francisco
+  (Lombard Street, Market Street), Las Vegas (Fremont Street, Las
+  Vegas Boulevard), plus Ocean Drive, Michigan Avenue, Beale Street,
+  Route 66, Peachtree Street, Boylston Street and Pennsylvania Avenue
+  — each with its own street pattern, building style, sign and map
+  label. A 2.2 km railway loop with 7 named stations and a 4-car
+  train that stops at all of them; two airports (Neon Bay Intl and
+  West Field), each with a runway, terminal, control tower and parked
+  planes; four highways with dividers and exit signs; and working
+  red / amber / green traffic signals at 8 junctions that traffic
+  obeys.

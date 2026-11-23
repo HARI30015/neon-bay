@@ -701,7 +701,7 @@
   </div>
   <div id="minimap-box" class="plate" role="button" aria-label="Total map of Neon Bay — tap to open it even bigger">
     <div id="minimap-head"><span>TOTAL MAP · NEON BAY</span><b>N ↑</b></div>
-    <canvas id="minimap" width="600" height="480"></canvas>
+    <canvas id="minimap" width="600" height="413"></canvas>
     <div id="minimap-loc">You are at <b>—</b></div>
     <div id="minimap-target"></div>
     <div class="dock-legend">
@@ -712,8 +712,11 @@
       <span><i style="background:#ffb020;"></i>Taxi / landmarks</span>
       <span><i class="sq" style="background:#9aa3b2;"></i>Doors</span>
       <span><i style="background:#ffd34d;"></i>Your home</span>
+      <span><i style="background:#fff; box-shadow:0 0 0 2px #7a2e2e;"></i>Train station</span>
+      <span><i style="background:#7fd4ff;"></i>Airport</span>
+      <span><i class="sq" style="background:#7e94c4;"></i>Colony</span>
     </div>
-    <div id="minimap-hint">WHOLE CITY — LANDMARKS PARK (TOP) TO OCEAN (BOTTOM) · TAP TO ENLARGE · M</div>
+    <div id="minimap-hint">WHOLE WORLD — 20 COLONIES · RAILWAY · 2 AIRPORTS · TAP TO ENLARGE · M</div>
   </div>
 </div>
 
@@ -721,7 +724,7 @@
   <div class="gh-card">
     <h2 id="map-title">Neon Bay <span>city map</span></h2>
     <p id="bigmap-loc" style="margin-top:2px;">You are at <b>—</b></p>
-    <canvas id="bigmap" width="880" height="704"></canvas>
+    <canvas id="bigmap" width="900" height="619"></canvas>
     <div class="legend">
       <span><i style="background:#fff; box-shadow:0 0 0 2px #ff2e88;"></i>You</span>
       <span><i style="background:#7dff9a;"></i>Mission target</span>
@@ -732,8 +735,11 @@
       <span><i style="background:#ff5a2a;"></i>Your supercar</span>
       <span><i class="sq" style="background:#9aa3b2;"></i>Building doors</span>
       <span><i style="background:#ffd34d;"></i>Your home (east)</span>
+      <span><i style="background:#fff; box-shadow:0 0 0 2px #7a2e2e;"></i>Train station</span>
+      <span><i style="background:#7fd4ff;"></i>Airport</span>
+      <span><i class="sq" style="background:#7e94c4;"></i>Colony</span>
     </div>
-    <p style="font-size:12.5px;">North is up: the World Landmarks Park is at the top, the beach and ocean at the bottom. Your white arrow turns as you move — on the bike it follows the bike.</p>
+    <p style="font-size:12.5px;">North is up: the World Landmarks Park is at the top, the beach and ocean at the bottom. The dashed white line is the railway loop with its seven stations; the wide grey roads are the highways, and all twenty colonies and both airports are named. Your white arrow turns as you move — on the bike it follows the bike.</p>
     <div class="gh-row" style="justify-content:flex-start;">
       <button class="gh-btn primary" id="close-map" type="button">Close — back to game</button>
     </div>
@@ -1024,7 +1030,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
 
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87b5d9);
-  scene.fog = new THREE.Fog(0xbcd3e6, 140, 520);
+  scene.fog = new THREE.Fog(0xbcd3e6, 150, 1250);
 
   // Gradient sky dome — replaces a flat background colour with a real
   // horizon glow that shifts through day, dusk and neon night.
@@ -1047,7 +1053,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   );
   scene.add(skyDome);
 
-  var camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 900);
+  var camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 2600);
   camera.position.set(0, 26, 66);
 
   // No PMREM environment map: generating one stalls software renderers for
@@ -1165,8 +1171,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
 
   // ---------- Ground: streets, blocks, beach, ocean ----------
   // Outer ground: patchy grass / earth beyond the city, like real outskirts
-  var outerTex = groundTexture("#6f7f56", "rgba(60,70,40,0.5)", false); outerTex.repeat.set(30, 30);
-  var ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 900),
+  var outerTex = groundTexture("#6f7f56", "rgba(60,70,40,0.5)", false); outerTex.repeat.set(64, 64);
+  var ground = new THREE.Mesh(new THREE.PlaneGeometry(1900, 1900),
     new THREE.MeshStandardMaterial({ map: outerTex, bumpMap: outerTex, bumpScale: 0.6, roughness: 1, metalness: 0 }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.04; ground.receiveShadow = true;
   scene.add(ground);
@@ -3431,8 +3437,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         }
       }
     }
-    pos.x = clamp(pos.x, -CITY, CITY);
-    pos.z = clamp(pos.z, -CITY, 96);
+    pos.x = clamp(pos.x, -460, 460);
+    pos.z = clamp(pos.z, -460, 96);
   }
   function hitsCollider(x, z, r) {
     var p = { x: x, z: z };
@@ -6068,7 +6074,26 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
         if (t.crashed <= 0) t.mesh.rotation.z = 0;
         return;
       }
-      t.pos += t.dir * t.speed * dt;
+      // World expansion: city traffic obeys the new junction signals —
+      // a car rolls up to the stop line on red/amber and waits for green.
+      var sigHold = false, sigNext = t.pos + t.dir * t.speed * dt;
+      for (var sj = 0; sj < CITY_SIGNALS.length; sj++) {
+        var J = CITY_SIGNALS[sj], stJ = signalState(J, performance.now() / 1000);
+        if (t.vertical) {
+          if (Math.abs(t.lane - J.x) < 3.6 && stJ.ns !== 2) {
+            var stopV = t.dir > 0 ? J.z - 8 : J.z + 8;
+            if ((t.dir > 0 && t.pos <= stopV && sigNext >= stopV) || (t.dir < 0 && t.pos >= stopV && sigNext <= stopV)) { t.pos = stopV; sigHold = true; }
+          }
+        } else {
+          if (Math.abs(t.lane - J.z) < 3.6 && stJ.ew !== 2) {
+            var stopH = t.dir > 0 ? J.x - 8 : J.x + 8;
+            if ((t.dir > 0 && t.pos <= stopH && sigNext >= stopH) || (t.dir < 0 && t.pos >= stopH && sigNext <= stopH)) { t.pos = stopH; sigHold = true; }
+          }
+        }
+        if (sigHold) break;
+      }
+      if (sigHold) t.brakeT = Math.max(t.brakeT, 0.12);
+      else t.pos = sigNext;
       if (t.vertical) {
         if (t.pos > 58) { t.pos = 58; t.dir = -1; t.brakeT = 1.1; t.indT = 1.5; if (t.center != null) t.lane = t.center + 2.3; }
         if (t.pos < -176) { t.pos = -176; t.dir = 1; t.brakeT = 1.1; t.indT = 1.5; if (t.center != null) t.lane = t.center - 2.3; }
@@ -6551,6 +6576,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       });
 
       updateTraffic(dt);
+      updateExpansion(dt, tNow);
       updatePeds(dt);
 
       if (!G.started) {
@@ -6588,6 +6614,651 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       showErr(err.message);
     }
   }
+  // ================================================================
+  // WORLD EXPANSION — 20 colonies with their own street plans, a
+  // railway with 7 stations and a moving train, 2 airports, and
+  // highways with working traffic signals. Everything is built
+  // AROUND the original beachfront city: nothing there moves.
+  // ================================================================
+  var shrubPtsX = [], treePtsX = [];
+  var roadMatX = new THREE.MeshStandardMaterial({ map: asphaltMap, roughness: 0.92, metalness: 0.02 });
+  var hwyMatX = mat(0x2f3136, 0.9, 0.02);
+  var padGrassMatX = mat(0x6d7c50, 1, 0);
+  var padPaveMatX = mat(0x8d8a80, 0.95, 0);
+  var whiteLineMatX = mat(0xe8e6da, 0.7, 0);
+
+  // flat ground pad (plane, no rotation tricks)
+  function xFlat(w, d, material, x, z, y) {
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), material);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y == null ? 0.015 : y, z);
+    m.receiveShadow = true; scene.add(m); return m;
+  }
+  // road strip between two points (thin box, so it sits cleanly)
+  function xRoad(x1, z1, x2, z2, w, material) {
+    var dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz);
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, len), material || roadMatX);
+    m.position.set((x1 + x2) / 2, 0.03, (z1 + z2) / 2);
+    m.rotation.y = Math.atan2(dx, dz);
+    m.receiveShadow = true; scene.add(m); return m;
+  }
+  // colony building with the game's own facade textures
+  var colMatCacheX = {};
+  function colMatX(style, floors) {
+    // floor counts are bucketed (4/7/10/13) so the whole expansion only
+    // ever paints a small set of facade canvases at load time
+    var bf = floors <= 4 ? 4 : (floors <= 7 ? 7 : (floors <= 10 ? 10 : 13));
+    var k = style + "_" + bf;
+    if (!colMatCacheX[k]) {
+      var tex = facadeTexture(style, bf);
+      var fac = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.03, emissive: 0xffc98a, emissiveMap: facadeEmissiveTexture(style, bf), emissiveIntensity: 0.15 });
+      colMatCacheX[k] = [fac, fac, roofMat, roofMat, fac, fac];
+    }
+    return colMatCacheX[k];
+  }
+  var solidMatCacheX = {};
+  function solidMatX(color) {
+    if (!solidMatCacheX[color]) solidMatCacheX[color] = [mat(color, 0.85, 0.02), mat(color, 0.85, 0.02), roofMat, roofMat, mat(color, 0.85, 0.02), mat(color, 0.85, 0.02)];
+    return solidMatCacheX[color];
+  }
+  function xColliderRot(x, z, w, d, ry) {
+    var c = Math.cos(ry || 0), s = Math.sin(ry || 0);
+    addCollider(x, z, (Math.abs(w * c) + Math.abs(d * s)) / 2, (Math.abs(w * s) + Math.abs(d * c)) / 2);
+  }
+  function xBuild(x, z, w, h, d, style, ry) {
+    var floors = clamp(Math.round(h / 3.1), 2, 14);
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), colMatX(style, floors));
+    m.position.set(x, h / 2, z); m.rotation.y = ry || 0; scene.add(m);
+    xColliderRot(x, z, w, d, ry);
+    return m;
+  }
+  function xBuildSolid(x, z, w, h, d, color, ry) {
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), solidMatX(color));
+    m.position.set(x, h / 2, z); m.rotation.y = ry || 0; scene.add(m);
+    xColliderRot(x, z, w, d, ry);
+    return m;
+  }
+  // free-standing name board on two poles (colony + station signs)
+  function xSign(text, x, z, ry, w, bg, fg) {
+    var grp = new THREE.Group();
+    var tex = shopSignTexture(text, bg || "#17301f", fg || "#ffffff");
+    var bw = w || 11;
+    var board = new THREE.Mesh(new THREE.BoxGeometry(bw, 1.7, 0.25), new THREE.MeshBasicMaterial({ map: tex }));
+    board.position.y = 3.4; grp.add(board);
+    grp.add(box(0.18, 3.4, 0.18, darkMetalMat, -bw / 2 + 0.7, 1.7, 0));
+    grp.add(box(0.18, 3.4, 0.18, darkMetalMat, bw / 2 - 0.7, 1.7, 0));
+    grp.position.set(x, 0, z); grp.rotation.y = ry || 0; scene.add(grp);
+    addCollider(x, z, 0.6, 0.6);
+    return grp;
+  }
+  function xShrub(x, z, s) { shrubPtsX.push({ x: x, z: z, s: s || 1 }); }
+  function xTree(x, z, s) { treePtsX.push({ x: x, z: z, s: s || 1 }); addCollider(x, z, 0.45, 0.45); }
+
+  // ---------- The 20 colonies (grouped by their home cities) ----------
+  var COLONIES = [
+    // Los Angeles group — west / north-west, together
+    { name: "Sunset Boulevard", short: "Sunset Blvd", x: -385, z: -300, r: 58, pat: "boulevardZ", style: 3, pad: 1, sgn: [0, -56, Math.PI] },
+    { name: "Hollywood Boulevard", short: "Hollywood Blvd", x: -400, z: -160, r: 56, pat: "grid", style: 5, pad: 0, sgn: [48, 0, Math.PI / 2] },
+    { name: "Melrose Avenue", short: "Melrose Ave", x: -230, z: -200, r: 50, pat: "diagonal", style: 1, pad: 0, sgn: [36, 36, Math.PI / 4] },
+    { name: "Rodeo Drive", short: "Rodeo Dr", x: -410, z: -20, r: 44, pat: "boutique", style: 2, pad: 1, sgn: [26, 0, Math.PI / 2] },
+    // Washington DC, Boston, Atlanta, Memphis
+    { name: "Pennsylvania Avenue", short: "Pennsylvania Ave", x: -200, z: -330, r: 56, pat: "monument", style: 0, pad: 1, sgn: [14, 44, 0] },
+    { name: "Boylston Street", short: "Boylston St", x: -230, z: -40, r: 48, pat: "brownstone", style: 6, pad: 0, sgn: [-44, 10, -Math.PI / 2] },
+    { name: "Peachtree Street", short: "Peachtree St", x: 232, z: -196, r: 54, pat: "terraces", style: 4, pad: 0, sgn: [48, 38, Math.PI / 3] },
+    { name: "Beale Street", short: "Beale St", x: -300, z: -115, r: 42, pat: "blues", style: 6, pad: 1, sgn: [20, -44, Math.PI / 2] },
+    // San Francisco pair — north centre, together
+    { name: "Market Street", short: "Market St", x: -10, z: -330, r: 50, pat: "grid", style: 7, pad: 0, sgn: [10, 42, 0] },
+    { name: "Lombard Street", short: "Lombard St", x: 70, z: -215, r: 46, pat: "winding", style: 2, pad: 0, sgn: [-52, -16, -Math.PI / 2] },
+    // New York group — north-east, together
+    { name: "Fifth Avenue", short: "5th Ave", x: 180, z: -322, r: 54, pat: "towers", style: 8, pad: 1, sgn: [26, 52, 0] },
+    { name: "Broadway", short: "Broadway", x: 378, z: -318, r: 52, pat: "diagonalNY", style: 5, pad: 0, sgn: [38, 6, -Math.PI / 4] },
+    { name: "Wall Street", short: "Wall St", x: 390, z: -170, r: 48, pat: "canyon", style: 9, pad: 1, sgn: [-30, 10, -Math.PI / 2] },
+    // Chicago + Las Vegas pair — east
+    { name: "Michigan Avenue", short: "Michigan Ave", x: 244, z: -60, r: 50, pat: "boulevardX", style: 8, pad: 1, sgn: [-56, -14, -Math.PI / 2] },
+    { name: "Las Vegas Boulevard", short: "Las Vegas Blvd", x: 400, z: -30, r: 52, pat: "strip", style: 10, pad: 0, sgn: [-30, -40, -Math.PI / 2] },
+    { name: "Fremont Street", short: "Fremont St", x: 390, z: 66, r: 44, pat: "canopy", style: 11, pad: 1, sgn: [-52, -12, -Math.PI / 2] },
+    // Miami beachfront — south-east shore
+    { name: "Ocean Drive", short: "Ocean Dr", x: 240, z: 45, r: 50, pat: "deco", style: 12, pad: 1, sgn: [-52, -14, -Math.PI / 2] },
+    // New Orleans pair — south-west, together
+    { name: "Bourbon Street", short: "Bourbon St", x: -400, z: 66, r: 44, pat: "lanes", style: 13, pad: 0, sgn: [30, -30, Math.PI / 2] },
+    { name: "Canal Street", short: "Canal St", x: -232, z: 64, r: 44, pat: "streetcar", style: 7, pad: 1, sgn: [-52, 0, -Math.PI / 2] },
+    // Route 66 — roadside strip along the northern highway
+    { name: "Route 66", short: "Route 66", x: 60, z: -252, r: 60, pat: "route66", style: 14, pad: 0, rect: true, w: 250, d: 58, sgn: [-120, -34, 0] }
+  ];
+
+  function buildColony(c) {
+    var cx = c.x, cz = c.z;
+    var padY = 0.010 + (COLONIES.indexOf(c) % 20) * 0.0005; // tiny offsets: no z-fighting where pads meet
+    if (c.rect) xFlat(c.w, c.d + 26, padGrassMatX, cx, cz, padY);
+    else xFlat(c.r * 1.85, c.r * 1.85, c.pad ? padPaveMatX : padGrassMatX, cx, cz, padY);
+    var st = c.style;
+    function B(dx, dz, w, h, d, sty, ry) { return xBuild(cx + dx, cz + dz, w, h, d, sty == null ? st : sty, ry); }
+    function BS(dx, dz, w, h, d, col, ry) { return xBuildSolid(cx + dx, cz + dz, w, h, d, col, ry); }
+    function R(x1, z1, x2, z2, w) { return xRoad(cx + x1, cz + z1, cx + x2, cz + z2, w); }
+    var i, j, t;
+    switch (c.pat) {
+      case "grid": // straight grid streets
+        for (i = -1; i <= 1; i++) { R(i * 22, -40, i * 22, 40, 7); R(-40, i * 22, 40, i * 22, 7); }
+        [-33, -11, 11, 33].forEach(function (dx, a) {
+          [-33, -11, 11, 33].forEach(function (dz, b) {
+            if ((a + b) % 3 === 0) return;
+            B(dx, dz, 12.5, 9 + ((a * 7 + b * 3) % 12), 12.5);
+          });
+        });
+        break;
+      case "towers": // Fifth Avenue — tall luxury grid
+        for (i = -1; i <= 1; i++) { R(i * 26, -40, i * 26, 40, 8); R(-40, i * 26, 40, i * 26, 8); }
+        [-34, -12, 12, 34].forEach(function (dx, a) {
+          [-34, -12, 12, 34].forEach(function (dz, b) {
+            if ((a + b) % 4 === 0) return;
+            B(dx, dz, 14, 26 + ((a * 5 + b * 9) % 18), 14);
+          });
+        });
+        break;
+      case "boulevardZ": // Sunset — wide N-S boulevard, palms + shrubs on the median
+        R(0, -52, 0, 44, 15);
+        for (i = 0; i < 5; i++) {
+          B(-19, -44 + i * 14, 12, 10 + (i % 3) * 2, 11);
+          B(19, -37 + i * 14, 12, 9 + (i % 4) * 2, 11);
+          xShrub(0, -40 + i * 14, 0.9); xTree(-11, -44 + i * 14, 1); xTree(11, -37 + i * 14, 1);
+        }
+        break;
+      case "boulevardX": // Michigan Avenue — wide E-W boulevard
+        R(-52, 0, 52, 0, 15);
+        for (i = -3; i <= 3; i++) {
+          B(i * 12.5, -19, 10, 13 + Math.abs(i * 2), 12);
+          B(i * 12.5, 19, 10, 11 + Math.abs(i * 3) % 12, 12);
+          xShrub(i * 12, 0, 0.9);
+        }
+        break;
+      case "diagonal": case "diagonalNY": { // avenue cutting across at 45°
+        var sgnZ = c.pat === "diagonal" ? 1 : -1;
+        var ax = 0.707, az = 0.707 * sgnZ, px = 0.707, pz = -0.707 * sgnZ;
+        R(-ax * 52, -az * 52, ax * 52, az * 52, 12);
+        for (i = -2; i <= 2; i++) {
+          var bx = ax * i * 15, bz = az * i * 15;
+          B(bx + px * 15, bz + pz * 15, 11, 9 + Math.abs(i * 3) % 11, 11, null, Math.atan2(ax, az));
+          B(bx - px * 15, bz - pz * 15, 11, 8 + Math.abs(i * 2) % 9, 11, null, Math.atan2(ax, az));
+        }
+        break;
+      }
+      case "boutique": // Rodeo Drive — short luxury street, white + glass
+        R(0, -32, 0, 32, 9);
+        for (i = -3; i <= 3; i++) {
+          BS(-12, i * 10.5, 10, 7.5, 9, 0xf2efe9);
+          BS(12, i * 10.5, 10, 8.5, 9, 0xe6e9ec);
+          xShrub(-6.5, i * 10.5, 0.7); xShrub(6.5, i * 10.5, 0.7);
+        }
+        break;
+      case "monument": // Pennsylvania Avenue — wide white stone boulevard + obelisk
+        R(-55, 0, 55, 0, 22);
+        for (i = -3; i <= 3; i++) {
+          BS(i * 16, -25, 15, 9, 13, 0xe8e2d4);
+          BS(i * 16, 25, 15, 9, 13, 0xded6c6);
+        }
+        var ob = new THREE.Mesh(new THREE.BoxGeometry(1.6, 27, 1.6), mat(0xe8e2d4, 0.7, 0.05));
+        ob.position.set(cx + 44, 13.5, cz); scene.add(ob); addCollider(cx + 44, cz, 1.2, 1.2);
+        xFlat(26, 26, padPaveMatX, cx + 44, cz, 0.02);
+        break;
+      case "brownstone": // Boylston — attached brick row houses
+        R(-42, 0, 42, 0, 8);
+        for (i = 0; i < 9; i++) {
+          B(-36 + i * 8.4, -12.5, 7.6, 10, 11);
+          B(-36 + i * 8.4, 12.5, 7.6, 10.5, 11);
+        }
+        break;
+      case "terraces": // Peachtree — stepped rows, heights climb north
+        [-24, 2, 28].forEach(function (dz, row) {
+          R(-44, dz - 8, 44, dz - 8, 7);
+          var wall = box(90, 0.7, 0.8, concreteMat, cx, 0.35, cz + dz + 13.5); scene.add(wall);
+          addCollider(cx, cz + dz + 13.5, 45, 0.5);
+          for (i = 0; i < 5; i++) B(-36 + i * 18, dz + 2, 13, 8 + row * 5 + (i % 3) * 2, 12);
+          xTree(-44, dz + 6, 1); xTree(44, dz + 6, 1);
+        });
+        break;
+      case "blues": // Beale Street — low brick clubs along one street by the highway
+        R(16, -40, 16, 40, 7);
+        for (i = 0; i < 7; i++) {
+          B(27, -36 + i * 12, 10, 6.5 + (i % 3), 9);
+          if (i % 2 === 0) B(-24, -30 + i * 13, 9, 6, 8);
+        }
+        break;
+      case "winding": { // Lombard Street — the crooked street: sine-curve road, houses alongside
+        var pts = [];
+        for (t = -1; t <= 1.001; t += 0.2) pts.push([t * 52, Math.sin(t * 2.4) * 12]);
+        for (i = 0; i < pts.length - 1; i++) R(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], 6.5);
+        var pastel = [0xf2d8c9, 0xd8e6f2, 0xf6e3a1, 0xd9ecd2, 0xeec9d8, 0xf0ead8];
+        pts.forEach(function (p, k) {
+          if (k % 2 === 1) return;
+          var sd = (k % 4 === 0) ? 1 : -1;
+          BS(p[0], p[1] + sd * 11, 9, 6, 8, pastel[k % pastel.length]);
+          xShrub(p[0] + 6, p[1] - sd * 10, 0.7);
+        });
+        break;
+      }
+      case "canyon": // Wall Street — tall towers tight on a narrow street
+        R(0, -42, 0, 42, 9);
+        for (i = 0; i < 5; i++) {
+          B(-11.5, -34 + i * 17, 13, 32 + (i * 7) % 16, 15);
+          B(11.5, -34 + i * 17, 13, 29 + (i * 11) % 18, 15);
+        }
+        break;
+      case "strip": // Las Vegas Boulevard — colourful neon strip
+        R(0, -52, 0, 52, 16);
+        for (i = -3; i <= 3; i++) {
+          B(-19, i * 15.5, 13, 14 + Math.abs(i * 4) % 12, 12);
+          B(19, i * 15.5 + 7, 13, 12 + Math.abs(i * 5) % 13, 12);
+        }
+        xSign("NEON CASINO", cx - 19, cz - 20, Math.PI / 2, 9, "#4a1042", "#ffd7f4");
+        xSign("STAR HOTEL", cx + 19, cz + 24, -Math.PI / 2, 9, "#102a4a", "#cfe8ff");
+        break;
+      case "canopy": { // Fremont Street — older downtown street under a glowing canopy
+        R(-42, 0, 42, 0, 10);
+        for (i = 0; i < 6; i++) {
+          B(-36 + i * 14.5, -13, 11, 8 + (i % 3) * 2, 10);
+          B(-36 + i * 14.5, 13, 11, 7 + (i % 4) * 2, 10);
+        }
+        var can = new THREE.Mesh(new THREE.BoxGeometry(84, 0.3, 15),
+          new THREE.MeshStandardMaterial({ color: 0xffc37a, roughness: 0.4, metalness: 0.1, transparent: true, opacity: 0.32, emissive: 0xff9a3c, emissiveIntensity: 0.5 }));
+        can.position.set(cx, 7.6, cz); scene.add(can);
+        [-40, -14, 14, 40].forEach(function (dx) {
+          scene.add(box(0.25, 7.6, 0.25, darkMetalMat, cx + dx, 3.8, cz - 7));
+          scene.add(box(0.25, 7.6, 0.25, darkMetalMat, cx + dx, 3.8, cz + 7));
+          addCollider(cx + dx, cz - 7, 0.3, 0.3); addCollider(cx + dx, cz + 7, 0.3, 0.3);
+        });
+        break;
+      }
+      case "deco": { // Ocean Drive — pastel art-deco hotels facing the shore
+        R(-48, 8, 48, 8, 9);
+        var decoCols = [0xf2d8c9, 0xbfe3dd, 0xf6e3a1, 0xeec9d8, 0xd8e6f2, 0xf0ead8];
+        for (i = 0; i < 6; i++) {
+          BS(-40 + i * 16, -8, 13, 9 + (i % 3) * 1.6, 10, decoCols[i]);
+          if (i % 2 === 0) BS(-40 + i * 16, -26, 10, 6, 9, decoCols[(i + 2) % 6]);
+          xTree(-40 + i * 16 + 8, 16, 1);
+        }
+        break;
+      }
+      case "lanes": // Bourbon Street — narrow colourful lanes
+        for (i = -1; i <= 1; i++) R(i * 14, -30, i * 14, 38, 5);
+        var laneCols = [0xe8a2b4, 0xa2c8e8, 0xf2d492, 0xa8d8a2, 0xe8b48a, 0xc4aee0];
+        for (i = 0; i < 6; i++) {
+          BS(-21, -24 + i * 10.5, 8, 5.5 + (i % 3), 8, laneCols[i % 6]);
+          BS(21, -24 + i * 10.5, 8, 6 + (i % 2) * 2, 8, laneCols[(i + 3) % 6]);
+          BS(-7, -20 + i * 10, 7, 5.5, 7, laneCols[(i + 1) % 6]);
+          BS(7, -20 + i * 10, 7, 6.5, 7, laneCols[(i + 4) % 6]);
+        }
+        break;
+      case "streetcar": { // Canal Street — wide avenue, grass median with rails
+        R(-46, -5, 46, -5, 8); R(-46, 5, 46, 5, 8);
+        var med = new THREE.Mesh(new THREE.BoxGeometry(92, 0.14, 2.6), getLawnMat());
+        med.position.set(cx, 0.07, cz); scene.add(med);
+        for (i = 0; i < 6; i++) {
+          if (i < 5) B(-38 + i * 15, -14, 12, 10 + (i % 4) * 2, 11);
+          B(-38 + i * 15, 17, 12, 11 + (i % 3) * 2.5, 11);
+        }
+        break;
+      }
+      case "route66": { // motels + diners along the highway, both sides
+        var spots66 = [[-95, -276], [-60, -276], [-22, -276], [18, -276], [58, -276], [98, -276], [138, -276], [178, -276], [-100, -228], [-64, -228]];
+        spots66.forEach(function (sp, k) {
+          var north = sp[1] < -252;
+          xBuild(sp[0], sp[1], 17, 5 + (k % 3), 9, st, north ? 0 : Math.PI);
+          if (k % 3 === 0) xTree(sp[0] + 12, sp[1] + (north ? -8 : 8), 0.9);
+        });
+        break;
+      }
+    }
+    // colony name board at its entrance
+    if (c.sgn) xSign(c.name.toUpperCase(), cx + c.sgn[0], cz + c.sgn[1], c.sgn[2], Math.max(11, c.name.length * 0.62), "#17301f", "#ffffff");
+  }
+  COLONIES.forEach(buildColony);
+  // Route 66 roadside signs (world coords, by the highway)
+  xSign("ROUTE 66 DINER", 38, -232, 0, 10, "#7a2e2e", "#ffffff");
+  xSign("MOTEL 66", 118, -272, Math.PI, 9, "#274b63", "#ffffff");
+
+  // ---------- Connector roads: every colony joins the road network ----------
+  var CONNECTORS = [
+    [-390, -352, -390, -399, 9], [-355, -160, -309, -160, 8], [-258, -215, -300, -215, 8],
+    [-378, -20, -196, -20, 8], [-200, -282, -200, -263, 9], [-10, -297, -10, -263, 9],
+    [-10, -360, -10, -386, 9], [180, -287, 180, -263, 9], [232, -232, 232, -261, 9],
+    [70, -240, 70, -264, 8], [338, -318, 309, -318, 9], [381, -170, 309, -170, 9],
+    [309, -30, 382, -30, 9], [345, 66, 309, 66, 8], [176, -60, 196, -60, 9],
+    [196, 45, 288, 45, 8], [-300, -40, -196, -40, 8], [-362, 66, -306, 66, 8],
+    [-281, 64, -212, 64, 8], [30, -384, 30, -376, 8], [-390, -384, -390, -376, 8],
+    [0, -146, 0, -243, 10], [-186, -60, -196, -60, 8]
+  ];
+  CONNECTORS.forEach(function (cn) { xRoad(cn[0], cn[1], cn[2], cn[3], cn[4]); });
+
+  // ---------- Highways: wide multi-lane roads with dividers + signs ----------
+  (function buildHighways() {
+    function hwy(w, d, x, z, y) {
+      var m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, d), hwyMatX);
+      m.position.set(x, y, z); m.receiveShadow = true; scene.add(m);
+    }
+    hwy(920, 18, 0, -252, 0.035);   // Route 66 highway (E-W, north)
+    hwy(18, 480, -300, -168, 0.033); // West highway (N-S)
+    hwy(18, 488, 300, -164, 0.036);  // East highway (N-S)
+    hwy(920, 16, 0, -390, 0.034);    // Airport Road (E-W, far north)
+    // centre dividers (with colliders so nobody drives through them)
+    scene.add(box(920, 0.22, 0.7, concreteMat, 0, 0.11, -252));
+    scene.add(box(0.7, 0.22, 480, concreteMat, -300, 0.11, -168));
+    scene.add(box(0.7, 0.22, 488, concreteMat, 300, 0.11, -164));
+    for (var dx = -440; dx <= 440; dx += 44) addCollider(dx, -252, 22, 0.6);
+    for (var dz1 = -396; dz1 <= 60; dz1 += 44) addCollider(-300, dz1, 0.6, 22);
+    for (var dz2 = -396; dz2 <= 68; dz2 += 44) addCollider(300, dz2, 0.6, 22);
+    // edge lines
+    [[920, 0.35, 0, -243.4], [920, 0.35, 0, -260.6], [0.35, 480, -308.6, -168], [0.35, 480, -291.4, -168],
+     [0.35, 488, 291.4, -164], [0.35, 488, 308.6, -164], [920, 0.35, 0, -382.4], [920, 0.35, 0, -397.6]].forEach(function (e) {
+      scene.add(box(e[0], 0.09, e[1], whiteLineMatX, e[2], 0.045, e[3]));
+    });
+    // lane dashes — one InstancedMesh for every highway
+    var dashPts = [];
+    for (var x1 = -450; x1 <= 450; x1 += 12) { dashPts.push([x1, -256.5]); dashPts.push([x1, -247.5]); dashPts.push([x1, -394]); dashPts.push([x1, -386]); }
+    for (var z3 = -400; z3 <= 64; z3 += 12) { dashPts.push([-304.5, z3]); dashPts.push([-295.5, z3]); }
+    for (var z4 = -400; z4 <= 72; z4 += 12) { dashPts.push([295.5, z4]); dashPts.push([304.5, z4]); }
+    var dashIM = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.32, 3.4), new THREE.MeshBasicMaterial({ color: 0xf2ead8 }), dashPts.length);
+    var dummy = new THREE.Object3D();
+    dashPts.forEach(function (p, i2) {
+      dummy.position.set(p[0], 0.075, p[1]);
+      dummy.rotation.set(-Math.PI / 2, 0, (p[1] === -256.5 || p[1] === -247.5 || p[1] === -394 || p[1] === -386) ? Math.PI / 2 : 0);
+      dummy.updateMatrix(); dashIM.setMatrixAt(i2, dummy.matrix);
+    });
+    scene.add(dashIM);
+    // overhead exit signs
+    function gantry(text, x, z, ry) {
+      var grp = new THREE.Group();
+      var tex = shopSignTexture(text, "#14532d", "#ffffff");
+      var board = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 0.3), new THREE.MeshBasicMaterial({ map: tex }));
+      board.position.y = 5.4; grp.add(board);
+      grp.add(box(0.22, 5.4, 0.22, darkMetalMat, -6, 2.7, 0));
+      grp.add(box(0.22, 5.4, 0.22, darkMetalMat, 6, 2.7, 0));
+      grp.position.set(x, 0, z); grp.rotation.y = ry || 0; scene.add(grp);
+      addCollider(x - Math.cos(ry || 0) * 6, z + Math.sin(ry || 0) * 6, 0.4, 0.4);
+      addCollider(x + Math.cos(ry || 0) * 6, z - Math.sin(ry || 0) * 6, 0.4, 0.4);
+    }
+    gantry("SUNSET BLVD · AIRPORT →", -300, -262, 0);
+    gantry("FIFTH AVENUE · BROADWAY →", 300, -262, 0);
+    gantry("← AIRPORTS · ROUTE 66", 0, -381, Math.PI);
+    gantry("OCEAN DRIVE · CITY →", 300, 40, Math.PI / 2);
+    gantry("← BOURBON ST · CANAL ST", -300, 30, -Math.PI / 2);
+  })();
+
+  // ---------- Traffic signals: city crossings + highway junctions ----------
+  var signalJunctions = [];
+  var CITY_SIGNALS = [];
+  function signalState(j, tNow) {
+    var p = (tNow + j.off) % 16;
+    return {
+      ns: p < 6 ? 2 : (p < 7.5 ? 1 : 0),                    // green 6s, amber 1.5s, red
+      ew: (p >= 8.5 && p < 14.5) ? 2 : (p >= 14.5 ? 1 : 0) // green in the other half-cycle
+    };
+  }
+  function buildSignal(x, z, off, corner, isCity) {
+    var ironM = mat(0x2f3338, 0.55, 0.5);
+    function head(hx, hz, ry) {
+      var grp = new THREE.Group();
+      grp.add(box(0.16, 4.8, 0.16, ironM, 0, 2.4, 0));
+      grp.add(box(0.46, 1.15, 0.36, mat(0x1c1e22, 0.5, 0.3), 0, 4.35, 0));
+      var cols = [0xff3b30, 0xffb020, 0x35c759];
+      var mats = cols.map(function (cc, ci) {
+        var mm = new THREE.MeshStandardMaterial({ color: 0x222222, emissive: cc, emissiveIntensity: 0.05 });
+        var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.115, 8, 8), mm);
+        bulb.position.set(0, 4.68 - ci * 0.33, 0.2); grp.add(bulb);
+        return mm;
+      });
+      grp.position.set(hx, 0, hz); grp.rotation.y = ry; scene.add(grp);
+      addCollider(hx, hz, 0.3, 0.3);
+      return mats;
+    }
+    var j = {
+      x: x, z: z, off: off,
+      nsMats: head(x + corner, z + corner, Math.PI * 0.75),
+      ewMats: head(x - corner, z - corner, -Math.PI * 0.25)
+    };
+    signalJunctions.push(j);
+    if (isCity) CITY_SIGNALS.push(j);
+    return j;
+  }
+  buildSignal(22, 22, 0, 8.2, true);
+  buildSignal(-22, -66, 5, 8.2, true);
+  buildSignal(66, -110, 10, 8.2, true);
+  buildSignal(-300, -252, 2, 10.8, false);
+  buildSignal(300, -252, 7, 10.8, false);
+  buildSignal(0, -252, 12, 10.8, false);
+  buildSignal(-300, -390, 4, 10.6, false);
+  buildSignal(300, -390, 9, 10.6, false);
+
+  // ---------- Railway: one loop line, 7 stations, a moving train ----------
+  var TRACK = [[-186, 44], [-186, -160], [-40, -205], [55, -196], [150, -215], [330, -290], [290, -368], [30, -378], [-390, -382], [-452, -370], [-452, -40], [-430, 30], [-300, 26]];
+  var trackSegs = [], TRACK_LEN = 0;
+  (function buildTrack() {
+    var ballastMat = mat(0x4a4238, 1, 0), railMat = mat(0x8a8f96, 0.35, 0.8), sleeperMat = mat(0x3a3128, 1, 0);
+    var sleeperPts = [];
+    for (var i = 0; i < TRACK.length; i++) {
+      var a = TRACK[i], b = TRACK[(i + 1) % TRACK.length];
+      var dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz);
+      trackSegs.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], len: len, cum: TRACK_LEN });
+      TRACK_LEN += len;
+      var mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2, ang = Math.atan2(dx, dz);
+      var bal = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.1, len + 0.6), ballastMat);
+      bal.position.set(mx, 0.05, mz); bal.rotation.y = ang; bal.receiveShadow = true; scene.add(bal);
+      var ux = dx / len, uz = dz / len, px = uz, pz = -ux;
+      [-0.75, 0.75].forEach(function (off) {
+        var rail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, len), railMat);
+        rail.position.set(mx + px * off, 0.17, mz + pz * off); rail.rotation.y = ang; scene.add(rail);
+      });
+      for (var s = 1; s < len - 0.5; s += 2) sleeperPts.push([a[0] + ux * s, a[1] + uz * s, ang]);
+    }
+    var slIM = new THREE.InstancedMesh(new THREE.BoxGeometry(2.2, 0.06, 0.55), sleeperMat, sleeperPts.length);
+    var dummy = new THREE.Object3D();
+    sleeperPts.forEach(function (p, i2) {
+      dummy.position.set(p[0], 0.1, p[1]); dummy.rotation.set(0, p[2], 0); dummy.updateMatrix();
+      slIM.setMatrixAt(i2, dummy.matrix);
+    });
+    scene.add(slIM);
+  })();
+  function trackPoint(s) {
+    s = ((s % TRACK_LEN) + TRACK_LEN) % TRACK_LEN;
+    for (var i = 0; i < trackSegs.length; i++) {
+      var sg = trackSegs[i];
+      if (s <= sg.cum + sg.len || i === trackSegs.length - 1) {
+        var t = clamp((s - sg.cum) / sg.len, 0, 1);
+        return { x: sg.ax + (sg.bx - sg.ax) * t, z: sg.az + (sg.bz - sg.az) * t, ang: Math.atan2(sg.bx - sg.ax, sg.bz - sg.az) };
+      }
+    }
+    return { x: TRACK[0][0], z: TRACK[0][1], ang: 0 };
+  }
+  var STATIONS = [
+    { name: "Marina Station", wp: 0 },
+    { name: "Neon Bay Central", wp: 2 },
+    { name: "Peachtree Station", wp: 4 },
+    { name: "Broadway Station", wp: 5 },
+    { name: "Airport Station", wp: 7 },
+    { name: "West Field Station", wp: 8 },
+    { name: "Bourbon Station", wp: 11 }
+  ];
+  STATIONS.forEach(function (stn) {
+    var wp = TRACK[stn.wp], seg = trackSegs[stn.wp];
+    stn.x = wp[0]; stn.z = wp[1];
+    stn.arc = seg.cum;
+    var dx = (seg.bx - seg.ax) / seg.len, dz = (seg.bz - seg.az) / seg.len;
+    var rx = -dz, rz = dx; // right-hand side of travel
+    var pcx = wp[0] + rx * 4.4, pcz = wp[1] + rz * 4.4, ang = Math.atan2(dx, dz);
+    var plat = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.55, 26), concreteMat);
+    plat.position.set(pcx, 0.275, pcz); plat.rotation.y = ang; plat.receiveShadow = true; scene.add(plat);
+    xColliderRot(pcx, pcz, 3.8, 26, ang);
+    // shelter + bench on the platform
+    var sh = new THREE.Group();
+    sh.add(box(7, 0.18, 3, darkMetalMat, 0, 2.5, 0));
+    sh.add(box(0.14, 2.5, 0.14, darkMetalMat, -3.3, 1.25, -1.3));
+    sh.add(box(0.14, 2.5, 0.14, darkMetalMat, 3.3, 1.25, -1.3));
+    sh.add(box(0.14, 2.5, 0.14, darkMetalMat, -3.3, 1.25, 1.3));
+    sh.add(box(0.14, 2.5, 0.14, darkMetalMat, 3.3, 1.25, 1.3));
+    sh.add(box(4.6, 0.09, 0.5, woodMat, 0, 0.95, -0.9));
+    sh.position.set(pcx, 0.55, pcz); sh.rotation.y = ang; scene.add(sh);
+    // station name board beside the platform
+    xSign(stn.name.toUpperCase(), wp[0] + rx * 7.4, wp[1] + rz * 7.4, Math.atan2(-rx, -rz), Math.max(10, stn.name.length * 0.6), "#402a12", "#ffd98a");
+  });
+  // the train: locomotive + 3 carriages, follows the loop, stops at stations
+  var trainHeadMatX = new THREE.MeshStandardMaterial({ color: 0x333333, emissive: 0xffe6b0, emissiveIntensity: 0.4 });
+  var trainLightX = null;
+  function buildTrainCar(color, isLoco) {
+    var g = new THREE.Group();
+    var bodyM = mat(color, 0.4, 0.35);
+    g.add(box(2.9, 1.9, 8.4, bodyM, 0, 1.85, 0));
+    g.add(box(3.0, 0.5, 8.5, mat(0x22242a, 0.5, 0.4), 0, 3.05, 0));
+    var winM = new THREE.MeshStandardMaterial({ color: 0xbfd9e8, roughness: 0.15, metalness: 0.3, emissive: 0xffd9a0, emissiveIntensity: 0.55 });
+    g.add(box(2.96, 0.8, 7.6, winM, 0, 2.25, 0));
+    g.add(box(2.5, 0.55, 1.6, mat(0x1c1e22, 0.6, 0.3), 0, 0.45, 2.6));
+    g.add(box(2.5, 0.55, 1.6, mat(0x1c1e22, 0.6, 0.3), 0, 0.45, -2.6));
+    if (isLoco) {
+      g.add(box(2.7, 0.9, 1.8, bodyM, 0, 1.5, 4.6));
+      var hl = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), trainHeadMatX);
+      hl.position.set(0, 1.9, 5.55); g.add(hl);
+      trainLightX = new THREE.PointLight(0xffe6b0, 0, 36, 1.6);
+      trainLightX.position.set(0, 2, 6.4); g.add(trainLightX);
+      var stripe = box(2.94, 0.3, 8.44, mat(0xffb020, 0.5, 0.2), 0, 1.05, 0); g.add(stripe);
+    }
+    scene.add(g);
+    return g;
+  }
+  var trainCarsX = [buildTrainCar(0x2e4a6b, true), buildTrainCar(0x9aa3ad, false), buildTrainCar(0x9aa3ad, false), buildTrainCar(0x7a2e2e, false)];
+  var trainState = { s: STATIONS[0].arc + 4.6, speed: 0, dwell: 3, next: 1 };
+  function updateTrain(dt) {
+    if (trainState.dwell > 0) {
+      trainState.dwell -= dt; trainState.speed = 0;
+    } else {
+      var target = STATIONS[trainState.next].arc;
+      var ds = (target - (trainState.s + 4.6) + TRACK_LEN) % TRACK_LEN; // distance for the loco nose to the next stop
+      var want = Math.min(17, ds * 0.30);
+      var acc = want > trainState.speed ? 4.5 : 10;
+      trainState.speed += clamp(want - trainState.speed, -acc * dt, acc * dt);
+      if (ds < 0.6 && trainState.speed < 0.8) {
+        trainState.s = target - 4.6; trainState.speed = 0; trainState.dwell = 4.5;
+        trainState.next = (trainState.next + 1) % STATIONS.length;
+      } else {
+        trainState.s += trainState.speed * dt;
+      }
+    }
+    for (var i = 0; i < trainCarsX.length; i++) {
+      var p = trackPoint(trainState.s - i * 9.8);
+      trainCarsX[i].position.set(p.x, 0.22, p.z);
+      trainCarsX[i].rotation.y = p.ang;
+    }
+    var glow = lampGlowMat.opacity || 0;
+    trainHeadMatX.emissiveIntensity = 0.4 + glow * 2.4;
+    if (trainLightX) trainLightX.intensity = glow * 2.6;
+  }
+
+  // ---------- Two airports ----------
+  var AIRPORTS = [
+    { name: "Neon Bay Intl Airport", x: 30, z: -432, r: 62, rx: 30, rz: -440, rl: 300 },
+    { name: "West Field Airport", x: -390, z: -436, r: 58, rx: -390, rz: -445, rl: 170 }
+  ];
+  function buildPlaneX(x, z, ry, accent) {
+    var g = new THREE.Group();
+    var white = mat(0xf4f6f8, 0.35, 0.1);
+    var fus = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 10.5, 12), white);
+    fus.rotation.x = Math.PI / 2; fus.position.y = 1.9; g.add(fus);
+    var nose = new THREE.Mesh(new THREE.ConeGeometry(1.05, 2.6, 12), white);
+    nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.9, 6.5); g.add(nose);
+    g.add(box(9.6, 0.22, 1.7, white, 0, 1.7, 0.4));
+    g.add(box(3.6, 0.18, 1.1, white, 0, 2.2, -5.2));
+    g.add(box(0.22, 1.9, 1.4, mat(accent, 0.4, 0.1), 0, 3.1, -5.2));
+    g.add(box(2.2, 0.5, 1.2, mat(0x22303c, 0.2, 0.3), 0, 2.6, 4.4));
+    g.add(box(9.7, 0.34, 0.5, mat(accent, 0.4, 0.1), 0, 1.95, 0.4));
+    g.position.set(x, 0.35, z); g.rotation.y = ry; scene.add(g);
+    xColliderRot(x, z, 9.6, 13.5, ry);
+    return g;
+  }
+  var runwayDashPtsX = [], runwayLightPtsX = [];
+  function buildAirport(cfg) {
+    var cx = cfg.cx, cz = cfg.cz;
+    xFlat(cfg.rwyLen + 60, 120, padGrassMatX, cx, cz - 4, 0.011);
+    var rwy = new THREE.Mesh(new THREE.BoxGeometry(cfg.rwyLen, 0.06, cfg.rwyW), hwyMatX);
+    rwy.position.set(cx, 0.03, cz); rwy.receiveShadow = true; scene.add(rwy);
+    for (var d = -cfg.rwyLen / 2 + 10; d < cfg.rwyLen / 2 - 6; d += 14) runwayDashPtsX.push([cx + d, cz]);
+    for (var e = -cfg.rwyLen / 2 + 6; e < cfg.rwyLen / 2; e += 18) {
+      runwayLightPtsX.push([cx + e, cz - cfg.rwyW / 2 - 1.2]);
+      runwayLightPtsX.push([cx + e, cz + cfg.rwyW / 2 + 1.2]);
+    }
+    // apron + terminal + tower between the runway and Airport Road
+    var tz = cz + cfg.rwyW / 2 + 18;
+    var apron = new THREE.Mesh(new THREE.BoxGeometry(cfg.termW + 44, 0.05, 30), mat(0x9aa0a3, 0.9, 0));
+    apron.position.set(cx, 0.025, tz + 2); apron.receiveShadow = true; scene.add(apron);
+    var term = xBuild(cx, tz, cfg.termW, 8, 15, 3);
+    term.castShadow = false;
+    var signPlane = new THREE.Mesh(new THREE.PlaneGeometry(cfg.termW * 0.86, 2.3),
+      new THREE.MeshBasicMaterial({ map: shopSignTexture(cfg.name.toUpperCase(), "#102a4a", "#ffffff") }));
+    signPlane.position.set(cx, 6.4, tz - 7.6); signPlane.rotation.y = Math.PI; scene.add(signPlane);
+    var towerX = cx + cfg.termW / 2 + 12;
+    var shaft = new THREE.Mesh(new THREE.BoxGeometry(4.6, cfg.towerH, 4.6), concreteMat);
+    shaft.position.set(towerX, cfg.towerH / 2, tz); scene.add(shaft);
+    var cab = new THREE.Mesh(new THREE.BoxGeometry(6.6, 3, 6.6), glassRailMat);
+    cab.position.set(towerX, cfg.towerH + 1.5, tz); scene.add(cab);
+    scene.add(box(7.2, 0.4, 7.2, roofMat, towerX, cfg.towerH + 3.2, tz));
+    addCollider(towerX, tz, 2.6, 2.6);
+    var hangar = xBuildSolid(cx - cfg.termW / 2 - 14, tz - 2, 17, 6.5, 14, 0xb9bdc2);
+    hangar.castShadow = false;
+    cfg.planes.forEach(function (pl) { buildPlaneX(cx + pl[0], tz - 10 + pl[1], pl[2], cfg.accent); });
+    xSign(cfg.name.toUpperCase(), cx - cfg.termW / 2 - 6, cz + cfg.rwyW / 2 + 57, 0, Math.max(13, cfg.name.length * 0.62), "#102a4a", "#ffffff");
+  }
+  buildAirport({ name: "Neon Bay Intl Airport", cx: 30, cz: -440, rwyLen: 300, rwyW: 26, termW: 54, towerH: 20, accent: 0x19d3e6,
+    planes: [[-52, 0, 0.5], [6, 2, -0.4], [58, 0, 0.9]] });
+  buildAirport({ name: "West Field Airport", cx: -390, cz: -445, rwyLen: 170, rwyW: 20, termW: 30, towerH: 13, accent: 0xff8a3c,
+    planes: [[-34, 0, -0.6], [26, 1, 0.4]] });
+  (function runwayInstancing() {
+    var dummy = new THREE.Object3D();
+    var dashIM = new THREE.InstancedMesh(new THREE.PlaneGeometry(4.5, 0.5), new THREE.MeshBasicMaterial({ color: 0xffffff }), runwayDashPtsX.length);
+    runwayDashPtsX.forEach(function (p, i) {
+      dummy.position.set(p[0], 0.07, p[1]); dummy.rotation.set(-Math.PI / 2, 0, Math.PI / 2); dummy.updateMatrix();
+      dashIM.setMatrixAt(i, dummy.matrix);
+    });
+    scene.add(dashIM);
+    var lightIM = new THREE.InstancedMesh(new THREE.SphereGeometry(0.17, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x223344, emissive: 0xbfe8ff, emissiveIntensity: 1.5 }), runwayLightPtsX.length);
+    runwayLightPtsX.forEach(function (p, i) {
+      dummy.position.set(p[0], 0.22, p[1]); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
+      lightIM.setMatrixAt(i, dummy.matrix);
+    });
+    scene.add(lightIM);
+  })();
+
+  // colony shrubs + trees — instanced, two draw calls for all of them
+  (function colonyGreenery() {
+    var dummy = new THREE.Object3D();
+    if (shrubPtsX.length) {
+      var shIM = new THREE.InstancedMesh(new THREE.SphereGeometry(0.85, 8, 7), shrubMat, shrubPtsX.length);
+      shrubPtsX.forEach(function (p, i) {
+        dummy.position.set(p.x, 0.75, p.z); dummy.scale.setScalar(p.s); dummy.rotation.set(0, i * 1.7, 0); dummy.updateMatrix();
+        shIM.setMatrixAt(i, dummy.matrix);
+      });
+      scene.add(shIM);
+    }
+    if (treePtsX.length) {
+      var trIM = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.14, 0.2, 2.4, 6), trunkMat, treePtsX.length);
+      var crIM = new THREE.InstancedMesh(new THREE.SphereGeometry(1.7, 8, 7), mat(0x3d7d44, 0.9, 0), treePtsX.length);
+      treePtsX.forEach(function (p, i) {
+        dummy.rotation.set(0, i * 2.3, 0); dummy.scale.setScalar(p.s);
+        dummy.position.set(p.x, 1.2, p.z); dummy.updateMatrix(); trIM.setMatrixAt(i, dummy.matrix);
+        dummy.position.set(p.x, 3.1, p.z); dummy.updateMatrix(); crIM.setMatrixAt(i, dummy.matrix);
+      });
+      scene.add(trIM, crIM);
+    }
+  })();
+
+  // ---------- per-frame expansion update (called from the main loop) ----------
+  function updateExpansion(dt, tNow) {
+    for (var i = 0; i < signalJunctions.length; i++) {
+      var j = signalJunctions[i], st = signalState(j, tNow);
+      for (var a = 0; a < 3; a++) {
+        j.nsMats[a].emissiveIntensity = st.ns === a ? 2.4 : 0.05;
+        j.ewMats[a].emissiveIntensity = st.ew === a ? 2.4 : 0.05;
+      }
+    }
+    updateTrain(dt);
+  }
+  window.NB_EXPANSION = { colonies: COLONIES, stations: STATIONS, airports: AIRPORTS, junctions: signalJunctions, train: trainState, trackLength: TRACK_LEN };
+
   // New players start on Balanced: the capped resolution, 1024 shadows,
   // medium water and 4 lamp lights are set here, before the first frame
   // (software renderers keep their extra-low 0.6 resolution via prFor).
@@ -6706,16 +7377,26 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     if (p.z >= 104) return "The Ocean";
     if (p.z >= BEACH_Z) return "The Beach";
     if (p.z >= 62) return "Ocean Drive Promenade";
+    for (var za = 0; za < AIRPORTS.length; za++) { if (Math.hypot(p.x - AIRPORTS[za].x, p.z - AIRPORTS[za].z) < AIRPORTS[za].r) return AIRPORTS[za].name; }
+    for (var zt = 0; zt < STATIONS.length; zt++) { if (Math.hypot(p.x - STATIONS[zt].x, p.z - STATIONS[zt].z) < 17) return STATIONS[zt].name; }
     if (p.z <= -148) return "World Landmarks Park";
     if (Math.hypot(p.x - HARBOUR.x, p.z - HARBOUR.z) < 26) return "Harbour Warehouses";
     if (Math.hypot(p.x - CLUB.x, p.z - CLUB.z) < 20) return "Club Neon · Ocean Drive";
     if (Math.hypot(p.x - HOME_X, p.z - HOME_Z) < 24) return "Your Home · East Neon Bay";
+    for (var zc = 0; zc < COLONIES.length; zc++) {
+      var cc = COLONIES[zc];
+      if (cc.rect) { if (Math.abs(p.x - cc.x) < cc.w / 2 && Math.abs(p.z - cc.z) < cc.d / 2 + 14) return cc.name; }
+      else if (Math.hypot(p.x - cc.x, p.z - cc.z) < cc.r) return cc.name;
+    }
+    if (Math.abs(p.z + 390) < 11 && Math.abs(p.x) < 452) return "Airport Road";
+    if ((Math.abs(p.x + 300) < 11 || Math.abs(p.x - 300) < 11) && p.z < 84 && p.z > -390) return "Colony Highway";
+    if (Math.abs(p.z + 252) < 11 && Math.abs(p.x) < 452) return "Route 66 Highway";
     var ns = p.z < -44 ? "North" : (p.z > 20 ? "South" : "Central");
     var ew = p.x < -30 ? " West" : (p.x > 30 ? " East" : "");
     return ns + ew + " Neon Bay";
   }
 
-  var MAP_EXT = { x0: -200, x1: 200, z0: -200, z1: 120 };
+  var MAP_EXT = { x0: -480, x1: 480, z0: -500, z1: 160 };
   var mapPing = { x: 0, z: 0, t: 0 };
   function drawMap(cv, big) {
     var ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
@@ -6753,6 +7434,57 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       ctx.textAlign = align || "center"; ctx.textBaseline = "middle";
       ctx.fillStyle = color; ctx.fillText(txt, X(x), Y(z));
     }
+    // ---- world expansion: highways, railway, colonies, airports ----
+    var bigCv = cv.width > 700;
+    // highways
+    ctx.strokeStyle = "#4c5871"; ctx.lineWidth = Math.max(4, 15 * sx); ctx.beginPath();
+    ctx.moveTo(X(-460), Y(-252)); ctx.lineTo(X(460), Y(-252));
+    ctx.moveTo(X(-300), Y(-390)); ctx.lineTo(X(-300), Y(72));
+    ctx.moveTo(X(300), Y(-390)); ctx.lineTo(X(300), Y(80));
+    ctx.moveTo(X(-460), Y(-390)); ctx.lineTo(X(460), Y(-390));
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.moveTo(X(-460), Y(-252)); ctx.lineTo(X(460), Y(-252));
+    ctx.moveTo(X(-460), Y(-390)); ctx.lineTo(X(460), Y(-390));
+    ctx.stroke();
+    // colony areas
+    COLONIES.forEach(function (c) {
+      var cw = (c.w || c.r * 1.5), cd = (c.d || c.r * 1.5);
+      ctx.fillStyle = "rgba(126,148,196,.30)";
+      ctx.fillRect(X(c.x - cw / 2), Y(c.z - cd / 2), cw * sx, cd * sz);
+    });
+    // airport grounds
+    AIRPORTS.forEach(function (a) {
+      ctx.fillStyle = "rgba(90,100,120,.55)";
+      ctx.fillRect(X(a.x - 95), Y(a.z - 34), 190 * sx, 78 * sz);
+      ctx.fillStyle = "#20242e";
+      ctx.fillRect(X(a.rx - a.rl / 2), Y(a.rz - 9), a.rl * sx, 18 * sz);
+    });
+    // railway line + stations
+    ctx.strokeStyle = "#d7dce6"; ctx.lineWidth = 1.6; ctx.setLineDash([5, 4]); ctx.beginPath();
+    TRACK.forEach(function (p, i) { if (i === 0) ctx.moveTo(X(p[0]), Y(p[1])); else ctx.lineTo(X(p[0]), Y(p[1])); });
+    ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+    // colony + airport + station names
+    COLONIES.forEach(function (c) {
+      ctx.font = "700 " + (bigCv ? 12 : 8) + "px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(235,242,255,.92)";
+      ctx.fillText(bigCv ? c.name.toUpperCase() : c.short, X(c.x), Y(c.z - (c.d ? 44 : c.r * 0.92)));
+    });
+    AIRPORTS.forEach(function (a) {
+      dot(a.x, a.z + 26, "#7fd4ff", big ? 6 : 3.6, "#0a0c1a");
+      ctx.font = "700 " + (bigCv ? 12.5 : 8.5) + "px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#bfe8ff";
+      ctx.fillText(bigCv ? a.name.toUpperCase() : (a.x > 0 ? "INTL AIRPORT" : "WEST FIELD AIRPORT"), X(a.x), Y(a.z + 40));
+    });
+    STATIONS.forEach(function (s) {
+      dot(s.x, s.z, "#ffffff", big ? 5 : 3, "#7a2e2e");
+      ctx.font = "600 " + (bigCv ? 10.5 : 7) + "px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(255,224,168,.95)";
+      ctx.fillText(s.name, X(s.x), Y(s.z) + (bigCv ? 11 : 8));
+    });
     // building doors
     ctx.fillStyle = "rgba(154,163,178,.8)";
     var bs = big ? 4.4 : 2.4;
