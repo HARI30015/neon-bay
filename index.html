@@ -1215,15 +1215,15 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   cityFloor.receiveShadow = true;
   scene.add(cityFloor);
 
-  // Painted road markings: dashed centre lines + Ocean Drive double-yellow.
+  // Painted road markings: dashed centre lines on the grid streets.
+  // Ocean Drive is a divided boulevard now — it paints its own lane
+  // dashes, edge lines and zebra crossings in buildOceanDrive below.
   // All dashes are ONE InstancedMesh (2 draw calls total) — hundreds of
   // separate meshes made slow devices and software renderers stall on load.
   (function roadMarkings() {
     var white = [], yellow = [];
-    for (var rx = -176; rx <= 176; rx += 11) yellow.push({ x: rx, z: 55.5, rot: Math.PI / 2 });
     for (var vx = -3; vx <= 3; vx++) for (var vz = -176; vz <= 40; vz += 11) white.push({ x: vx * BLOCK, z: vz, rot: 0 });
     for (var hz = -3; hz <= 0; hz++) for (var hx = -176; hx <= 176; hx += 11) { if (Math.abs(hx % BLOCK) < 9) continue; white.push({ x: hx, z: hz * BLOCK, rot: Math.PI / 2 }); }
-    [-40, 26, 96].forEach(function (cx) { for (var s = -4; s <= 4; s++) white.push({ x: cx + s * 1.05, z: 62, rot: 0, stripe: true }); });
     var dummy = new THREE.Object3D();
     function build(list, color, geo) {
       var im = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: color }), list.length);
@@ -1236,26 +1236,29 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       scene.add(im);
     }
     build(white, 0xf2ead8, new THREE.PlaneGeometry(0.32, 3.4));
-    build(yellow, 0xffb020, new THREE.PlaneGeometry(0.32, 3.4));
+    if (yellow.length) build(yellow, 0xffb020, new THREE.PlaneGeometry(0.32, 3.4));
   })();
 
   // Pavements: pale concrete slabs with real joints — the kerb every block sits on
   var paveTex = groundTexture("#9d9a92", "rgba(120,115,105,0.6)", true); paveTex.repeat.set(6, 6);
   var padMat = new THREE.MeshStandardMaterial({ map: paveTex, bumpMap: paveTex, bumpScale: 0.7, roughness: 0.82, metalness: 0 });
   var padGeo = new THREE.BoxGeometry(BLOCK - ROAD, 0.22, BLOCK - ROAD);
+  // The beachfront row's pads stop at the boulevard's north sidewalk
+  // (z 52.5) so the Ocean Drive carriageways run clear in front of them.
+  var padGeoFront = new THREE.BoxGeometry(BLOCK - ROAD, 0.22, 24);
   for (var gx = -3; gx <= 3; gx++) {
     for (var gz = -3; gz <= 1; gz++) {
-      var pad = new THREE.Mesh(padGeo, padMat);
-      pad.position.set(gx * BLOCK, 0.11, gz * BLOCK);
+      var pad = new THREE.Mesh(gz === 1 ? padGeoFront : padGeo, padMat);
+      pad.position.set(gx * BLOCK, 0.11, gz === 1 ? 40.5 : gz * BLOCK);
       pad.receiveShadow = true;
       scene.add(pad);
     }
   }
   // Beachfront promenade: warm stone slabs like a real seafront walkway
   var promTex = groundTexture("#b3a58e", "rgba(140,125,100,0.6)", true); promTex.repeat.set(40, 2);
-  var prom = new THREE.Mesh(new THREE.BoxGeometry(CITY * 2 + 40, 0.24, 15),
+  var prom = new THREE.Mesh(new THREE.BoxGeometry(CITY * 2 + 40, 0.24, 8),
     new THREE.MeshStandardMaterial({ map: promTex, bumpMap: promTex, bumpScale: 0.7, roughness: 0.88, metalness: 0 }));
-  prom.position.set(0, 0.12, 70); prom.receiveShadow = true; scene.add(prom);
+  prom.position.set(0, 0.12, 79.5); prom.receiveShadow = true; scene.add(prom);
 
   // Sand — grainy, rippled, with a darker wet strip at the waterline
   var sandTex = groundTexture("#dcc08e", "rgba(190,160,105,0.7)", false); sandTex.repeat.set(36, 4);
@@ -2376,9 +2379,196 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     group.position.set(cx, 0, cz);
     scene.add(group);
   }
+  // ---------- MAIN STREET buildings (the Ocean Drive frontage row) ----------
+  // The seven lots facing the boulevard are each a DIFFERENT structure —
+  // no repeated block: low beach shops with awnings, brick flats with
+  // balconies, a curved glass tower with set-back tiers, a stepped
+  // art-deco hotel, an angled-bay block, white balcony flats with a
+  // pergola roof, and a slim spire tower on a podium. Every one keeps a
+  // working front door (E to enter) on the boulevard sidewalk.
+  function msFacade(style, floors, tint) {
+    var tex = facadeTexture(style, floors);
+    var m = new THREE.MeshStandardMaterial({ map: tex, bumpMap: tex, bumpScale: 0.6, roughness: 0.82, metalness: 0.04, emissive: 0xffb45e, emissiveMap: facadeEmissiveTexture(style, floors), emissiveIntensity: 0.18 });
+    if (tint) m.color.setHex(tint);
+    windowMats.push(m);
+    return m;
+  }
+  function msFrontage(group, name, isHotel, w, lx, frontZ) {
+    var ftex = frontageTexture(name, "#2e3338", isHotel);
+    var fm = new THREE.MeshStandardMaterial({ map: ftex, roughness: 0.55, metalness: 0.08, emissive: 0xffb45e, emissiveMap: ftex, emissiveIntensity: 0.22 });
+    windowMats.push(fm);
+    var f = new THREE.Mesh(new THREE.BoxGeometry(w, 2.95, 0.45), fm);
+    f.position.set(lx || 0, 1.68, frontZ + 0.22); f.receiveShadow = true; group.add(f);
+  }
+  function msPlanters(group, frontZ, halfW) {
+    [-1, 1].forEach(function (sd) {
+      group.add(box(1.15, 0.52, 0.55, woodDarkMat, sd * halfW, 0.5, frontZ + 1.25, false));
+      var psh = new THREE.Mesh(new THREE.SphereGeometry(0.52, 8, 7), shrubMat);
+      psh.scale.y = 0.75; psh.position.set(sd * halfW, 0.95, frontZ + 1.25); group.add(psh);
+    });
+  }
+  function buildMainStreetBlock(bx) {
+    var cx = bx * BLOCK, cz = BLOCK;      // the beachfront row, z = 44
+    var group = new THREE.Group();
+    var FRONT = 7.5;                      // local front face -> world z 51.5, on the boulevard sidewalk
+    if (bx === -3) {
+      // BEACH SHOPS — a low two-storey row: two shopfronts with signs and
+      // awnings, the entrance between them, a roof-terrace pergola on top
+      var shopMain = new THREE.Mesh(new THREE.BoxGeometry(27, 7, 13), msFacade(0, 2, 0xf3ead8));
+      shopMain.position.set(0, 3.72, FRONT - 6.5); shopMain.castShadow = true; shopMain.receiveShadow = true; group.add(shopMain);
+      group.add(box(7.5, 3.2, 0.2, woodMat, -8.5, 5.6, FRONT + 0.08, false));   // wood-clad upper bay
+      [{ x: -9, name: "SURF SHACK", bg: "#0e6e6e", awn: 0x0e7d7d }, { x: 9, name: "GELATO", bg: "#a03a5c", awn: 0xc24a6e }].forEach(function (s) {
+        group.add(box(8.4, 2.9, 0.4, mat(0x2a3438, 0.18, 0.25, 0xffb45e, 0.12), s.x, 1.67, FRONT + 0.2, false));
+        var sign = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 1.05), new THREE.MeshBasicMaterial({ map: shopSignTexture(s.name, s.bg, "#ffffff") }));
+        sign.position.set(s.x, 3.85, FRONT + 0.45); group.add(sign);
+        var awn = box(8.6, 0.09, 1.7, mat(s.awn, 0.85, 0), s.x, 3.3, FRONT + 0.95, false); awn.rotation.x = 0.38; group.add(awn);
+      });
+      group.add(box(27.7, 0.6, 0.35, slabEdgeMat, 0, 7.55, FRONT + 0.05, false));   // parapet lip
+      group.add(box(27.3, 0.22, 13.3, roofMat, 0, 7.32, FRONT - 6.5, false));
+      [-5.2, 5.2].forEach(function (pxp) { [-3.4, 2.6].forEach(function (pzp) { group.add(box(0.14, 1.6, 0.14, woodDarkMat, pxp, 8.2, FRONT - 6.5 + pzp, false)); }); });
+      for (var sl = 0; sl < 5; sl++) group.add(box(11.4, 0.07, 0.5, woodMat, 0, 9.05, FRONT - 9.6 + sl * 1.55, false));
+      addDoorway(group, 0, FRONT, "modern", "BEACH SHOPS", cx, cz);
+      msPlanters(group, FRONT, 5.4);
+      addCollider(cx, cz + FRONT - 6.5, 14.1, 8.2);
+    } else if (bx === -2) {
+      // BRICK COURT — six floors of brick flats, stone cornice, a grid of
+      // individual glass-railed balconies over a lobby frontage
+      var brickMain = new THREE.Mesh(new THREE.BoxGeometry(24, 18.72, 14), msFacade(1, 6, 0xb26a48));
+      brickMain.position.set(0, 9.58, FRONT - 7); brickMain.castShadow = true; brickMain.receiveShadow = true; group.add(brickMain);
+      group.add(box(24.9, 0.55, 14.9, slabEdgeMat, 0, 19.2, FRONT - 7, false));
+      group.add(box(23.5, 0.3, 13.5, roofMat, 0, 19.6, FRONT - 7, false));
+      group.add(box(1.5, 0.8, 0.9, acUnitMat, 6, 20.1, FRONT - 9, false));
+      for (var bf = 1; bf < 6; bf++) for (var bc = -1; bc <= 1; bc++) {
+        var byy = 0.22 + bf * 3.12;
+        group.add(box(3.4, 0.18, 1.3, concreteMat, bc * 7.2, byy - 0.05, FRONT + 0.65, false));
+        var brail = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.85, 0.06), glassRailMat);
+        brail.position.set(bc * 7.2, byy + 0.42, FRONT + 1.28); group.add(brail);
+      }
+      msFrontage(group, "BRICK COURT", false, 21, 0, FRONT);
+      group.add(box(11, 0.26, 2.2, roofMat, 0, 3.3, FRONT + 1.05, false));
+      addDoorway(group, 0, FRONT, "modern", "BRICK COURT", cx, cz);
+      msPlanters(group, FRONT, 3.3);
+      addCollider(cx, cz + FRONT - 7, 12.6, 8.7);
+    } else if (bx === -1) {
+      // AZURE TOWER — a tall all-glass tower with a curved glass corner
+      // turret and two set-back glass tiers under a dark crown slab
+      if (!sharedGlassTex) sharedGlassTex = glassTexture();
+      var azGlass = new THREE.MeshPhysicalMaterial({ map: sharedGlassTex, roughness: 0.07, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.06, envMap: carEnv(), envMapIntensity: 1.3, emissive: 0xffc98a, emissiveMap: sharedGlassTex, emissiveIntensity: 0.12 });
+      windowMats.push(azGlass);
+      var H1 = 13 * 3.12;
+      var azMain = new THREE.Mesh(new THREE.BoxGeometry(18, H1, 14), azGlass);
+      azMain.position.set(0, H1 / 2 + 0.22, FRONT - 7); azMain.castShadow = true; azMain.receiveShadow = true; group.add(azMain);
+      var curve = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, H1, 14), azGlass);
+      curve.position.set(7.6, H1 / 2 + 0.22, FRONT - 1.2); curve.castShadow = true; group.add(curve);
+      var azT2 = new THREE.Mesh(new THREE.BoxGeometry(13.5, 7.5, 10.5), azGlass);
+      azT2.position.set(-1, H1 + 3.97, FRONT - 8.5); azT2.castShadow = true; group.add(azT2);
+      var azT3 = new THREE.Mesh(new THREE.BoxGeometry(8.5, 5.5, 7.5), azGlass);
+      azT3.position.set(-1, H1 + 10.47, FRONT - 9); azT3.castShadow = true; group.add(azT3);
+      group.add(box(9.5, 0.4, 8.5, darkMetalMat, -1, H1 + 13.45, FRONT - 9, false));
+      msFrontage(group, "AZURE TOWER", true, 15, -1.5, FRONT);
+      group.add(box(9, 0.26, 2.4, darkMetalMat, -3.5, 3.3, FRONT + 1.1, false));
+      addDoorway(group, -3.5, FRONT, "tower", "AZURE TOWER", cx, cz);
+      msPlanters(group, FRONT, 5.6);
+      addCollider(cx, cz + FRONT - 7, 9.6, 8.7);
+      addCollider(cx + 7.6, cz + FRONT - 1.2, 3.9, 3.9);
+    } else if (bx === 0) {
+      // PALMS HOTEL — stepped art-deco: three tiers narrowing as they
+      // climb, a gold fin with the hotel's name, palms at the door
+      var dT1 = new THREE.Mesh(new THREE.BoxGeometry(28, 9.36, 15), msFacade(3, 3, 0xf2c4a8));
+      dT1.position.set(0, 4.9, FRONT - 7.5); dT1.castShadow = true; dT1.receiveShadow = true; group.add(dT1);
+      var dT2 = new THREE.Mesh(new THREE.BoxGeometry(21, 9.36, 12), msFacade(0, 3, 0xeecfb2));
+      dT2.position.set(0, 14.26, FRONT - 8.7); dT2.castShadow = true; dT2.receiveShadow = true; group.add(dT2);
+      var dT3 = new THREE.Mesh(new THREE.BoxGeometry(14, 9.36, 9.5), msFacade(1, 3, 0xf6dcc0));
+      dT3.position.set(0, 23.62, FRONT - 9.7); dT3.castShadow = true; dT3.receiveShadow = true; group.add(dT3);
+      group.add(box(28.7, 0.42, 15.7, slabEdgeMat, 0, 9.85, FRONT - 7.5, false));
+      group.add(box(21.7, 0.42, 12.7, slabEdgeMat, 0, 19.21, FRONT - 8.7, false));
+      group.add(box(14.7, 0.42, 10.2, slabEdgeMat, 0, 28.57, FRONT - 9.7, false));
+      group.add(box(1.1, 5.2, 0.5, mat(0xd8a92c, 0.4, 0.6), 0, 31.35, FRONT - 9.7, false));
+      var dSign = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.2), new THREE.MeshBasicMaterial({ map: signTexture("PALMS", "#ffd76a", "#20303a") }));
+      dSign.position.set(0, 31.6, FRONT - 9.35); group.add(dSign);
+      msFrontage(group, "PALMS HOTEL", true, 24, 0, FRONT);
+      group.add(box(12, 0.28, 2.6, roofMat, 0, 3.32, FRONT + 1.2, false));
+      addDoorway(group, 0, FRONT, "hotel", "PALMS HOTEL", cx, cz);
+      [-12.5, 12.5].forEach(function (ppx) {
+        var pg = new THREE.Group();
+        var ptrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.24, 5.2, 6), mat(0x7a5c3e, 0.95, 0));
+        ptrunk.position.y = 2.6; ptrunk.castShadow = true; pg.add(ptrunk);
+        var pcrown = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.6, 7), mat(0x3d7d44, 0.85, 0));
+        pcrown.position.y = 5.6; pcrown.scale.y = 0.55; pcrown.castShadow = true; pg.add(pcrown);
+        pg.position.set(ppx, 0.22, FRONT + 3.4);
+        group.add(pg);
+        addCollider(cx + ppx, cz + FRONT + 3.4, 0.45, 0.45);
+      });
+      addCollider(cx, cz + FRONT - 7.5, 14.6, 9.2);
+    } else if (bx === 1) {
+      // BAYVIEW FLATS — a mid block with a big angled bay jutting toward
+      // the street, a wood-clad flank and a sloping mono-pitch roof
+      var bayMain = new THREE.Mesh(new THREE.BoxGeometry(24, 15.6, 13), msFacade(2, 5, 0xe8e2d4));
+      bayMain.position.set(0, 8.02, FRONT - 6.5); bayMain.castShadow = true; bayMain.receiveShadow = true; group.add(bayMain);
+      var bayVol = new THREE.Mesh(new THREE.BoxGeometry(12.5, 12, 5), msFacade(3, 4, 0xd8cfc0));
+      bayVol.position.set(-4.5, 6.22, FRONT - 2.3); bayVol.rotation.y = 0.32; bayVol.castShadow = true; bayVol.receiveShadow = true; group.add(bayVol);
+      group.add(box(0.25, 10, 6.5, woodMat, 12.05, 5.22, FRONT - 7, false));
+      var bayRoof = box(25.2, 0.35, 14.2, roofMat, 0, 16.05, FRONT - 6.5, false); bayRoof.rotation.z = 0.045; group.add(bayRoof);
+      group.add(box(1.5, 0.8, 0.9, acUnitMat, -7, 16.6, FRONT - 9, false));
+      msFrontage(group, "BAYVIEW FLATS", false, 12, 5.5, FRONT);
+      addDoorway(group, 6, FRONT, "modern", "BAYVIEW FLATS", cx, cz);
+      msPlanters(group, FRONT, 9.6);
+      addCollider(cx, cz + FRONT - 6.5, 12.6, 8.2);
+      addCollider(cx - 4.5, cz + FRONT - 2.3, 7.0, 4.6);
+    } else if (bx === 2) {
+      // SEABREEZE — white-render flats: full-width glass balconies on
+      // every floor, a set-back glass penthouse and a pergola roof
+      var sbTex = towerFacadeTexture(5);
+      var sbMat = new THREE.MeshStandardMaterial({ map: sbTex, bumpMap: sbTex, bumpScale: 0.6, roughness: 0.82, metalness: 0.04, emissive: 0xffb45e, emissiveMap: towerEmissiveTexture(5), emissiveIntensity: 0.18 });
+      windowMats.push(sbMat);
+      var sbMain = new THREE.Mesh(new THREE.BoxGeometry(25, 15.6, 14), sbMat);
+      sbMain.position.set(0, 8.02, FRONT - 7); sbMain.castShadow = true; sbMain.receiveShadow = true; group.add(sbMain);
+      for (var sf2 = 1; sf2 < 5; sf2++) {
+        var sy2 = 0.22 + sf2 * 3.12;
+        group.add(box(21, 0.2, 1.55, concreteMat, 0, sy2 - 0.08, FRONT + 0.78, false));
+        var srail = new THREE.Mesh(new THREE.BoxGeometry(21, 0.92, 0.06), glassRailMat);
+        srail.position.set(0, sy2 + 0.42, FRONT + 1.52); group.add(srail);
+        group.add(box(21, 0.06, 0.08, darkMetalMat, 0, sy2 + 0.9, FRONT + 1.52, false));
+      }
+      if (!sharedGlassTex) sharedGlassTex = glassTexture();
+      var sbPent = new THREE.Mesh(new THREE.BoxGeometry(15, 2.6, 9), new THREE.MeshPhysicalMaterial({ map: sharedGlassTex, roughness: 0.07, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.06, envMap: carEnv(), envMapIntensity: 1.3, emissive: 0xffc98a, emissiveMap: sharedGlassTex, emissiveIntensity: 0.12 }));
+      windowMats.push(sbPent.material);
+      sbPent.position.set(-1, 17.12, FRONT - 8); sbPent.castShadow = true; group.add(sbPent);
+      group.add(box(16.2, 0.32, 10.2, roofMat, -1, 18.6, FRONT - 8, false));
+      [-9, -3, 3, 9].forEach(function (ppx) { group.add(box(0.13, 2.1, 0.13, woodDarkMat, ppx, 16.85, FRONT - 0.6, false)); });
+      for (var psl = 0; psl < 4; psl++) group.add(box(19.5, 0.07, 0.45, woodMat, 0, 17.95, FRONT - 1.9 + psl * 0.95, false));
+      msFrontage(group, "SEABREEZE", false, 20, 0, FRONT);
+      group.add(box(10, 0.26, 2.2, roofMat, 0, 3.3, FRONT + 1.05, false));
+      addDoorway(group, 0, FRONT, "modern", "SEABREEZE", cx, cz);
+      msPlanters(group, FRONT, 3.3);
+      addCollider(cx, cz + FRONT - 7, 13.1, 8.7);
+    } else {
+      // NEON SPIRE — a slim 15-storey tower on a two-storey podium,
+      // dark fins up its front corners and a lit spire on the crown
+      var nsPod = new THREE.Mesh(new THREE.BoxGeometry(26, 6.24, 15), msFacade(0, 2, 0xdcd8ce));
+      nsPod.position.set(0, 3.34, FRONT - 7.5); nsPod.castShadow = true; nsPod.receiveShadow = true; group.add(nsPod);
+      var nsTow = new THREE.Mesh(new THREE.BoxGeometry(13, 40, 11), msFacade(1, 13, 0xe6e2d8));
+      nsTow.position.set(0, 20.22, FRONT - 8.5); nsTow.castShadow = true; nsTow.receiveShadow = true; group.add(nsTow);
+      group.add(box(0.5, 40, 0.5, darkMetalMat, -6.2, 20.22, FRONT - 2.85, false));
+      group.add(box(0.5, 40, 0.5, darkMetalMat, 6.2, 20.22, FRONT - 2.85, false));
+      group.add(box(10.5, 3, 8.5, slabEdgeMat, 0, 41.7, FRONT - 8.5, false));
+      group.add(box(6.5, 3, 5.5, darkMetalMat, 0, 44.7, FRONT - 8.5, false));
+      var nsSpire = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.55, 7, 8), mat(0xd8a92c, 0.35, 0.7));
+      nsSpire.position.set(0, 49.7, FRONT - 8.5); group.add(nsSpire);
+      var nsTip = new THREE.Mesh(new THREE.SphereGeometry(0.34, 8, 8), mat(0xffb020, 0.4, 0.1, 0xffb45e, 1.4));
+      nsTip.position.set(0, 53.4, FRONT - 8.5); group.add(nsTip);
+      msFrontage(group, "NEON SPIRE", true, 22, 0, FRONT);
+      addDoorway(group, 0, FRONT, "spire", "NEON SPIRE", cx, cz);
+      msPlanters(group, FRONT, 4.6);
+      addCollider(cx, cz + FRONT - 7.5, 13.6, 9.2);
+    }
+    group.position.set(cx, 0, cz);
+    scene.add(group);
+  }
   for (var bx = -3; bx <= 3; bx++) {
     for (var bz = -3; bz <= 1; bz++) {
-      buildBlock(bx * BLOCK, bz * BLOCK, bz === 1);
+      if (bz === 1) buildMainStreetBlock(bx);
+      else buildBlock(bx * BLOCK, bz * BLOCK, false);
     }
   }
 
@@ -3050,7 +3240,9 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   }
   for (var px = -176; px <= 176; px += 16) {
     if (Math.abs(px % BLOCK) < 8) continue;
-    palm(px + rand(-2, 2), 63 + rand(-1, 1), rand(0.9, 1.25));
+    // the old frontage palm row now stands on the boulevard's median,
+    // following its gentle curve, clear of the crossing gaps
+    if (blvdBreakDist(px) > 7) palm(px + rand(-2, 2), oceanMedianZ(px) + rand(-0.5, 0.5), rand(0.9, 1.25));
     if (Math.random() < 0.7) palm(px + rand(-3, 3), 86 + rand(-2, 2), rand(0.85, 1.15));
   }
   for (var pz = -150; pz <= 40; pz += 22) {
@@ -3212,9 +3404,9 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     for (var sx = -3; sx <= 3; sx++) for (var sz = -3; sz <= 1; sz++) {
       // on the pavement corners of each block, clear of the buildings at the centre
       spots.push({ x: sx * BLOCK - 13 + rand(-1, 1), z: sz * BLOCK - 13 + rand(-1, 1) });
-      spots.push({ x: sx * BLOCK + 13 + rand(-1, 1), z: sz * BLOCK + 13 + rand(-1, 1) });
+      spots.push({ x: sx * BLOCK + 13 + rand(-1, 1), z: sz * BLOCK + (sz === 1 ? 9.5 : 13) + rand(-1, 1) });
       if (Math.random() < 0.45) spots.push({ x: sx * BLOCK + 13 + rand(-1, 1), z: sz * BLOCK - 13 + rand(-1, 1) });
-      if (Math.random() < 0.25) spots.push({ x: sx * BLOCK - 13 + rand(-1, 1), z: sz * BLOCK + 13 + rand(-1, 1) });
+      if (Math.random() < 0.25) spots.push({ x: sx * BLOCK - 13 + rand(-1, 1), z: sz * BLOCK + (sz === 1 ? 9.5 : 13) + rand(-1, 1) });
     }
     for (var px2 = -168; px2 <= 168; px2 += 28) spots.push({ x: px2 + rand(-2, 2), z: 80.5, beach: true });
     var hedgeM = mat(0x466f38, 0.95, 0);
@@ -3242,7 +3434,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     for (var hx = -180; hx <= 180; hx += 12) {
       if (Math.abs(hx % BLOCK) < 7) continue;
       var hg = new THREE.Mesh(new THREE.BoxGeometry(9, 0.85, 0.8), hedgeM);
-      hg.position.set(hx, 0.62, 76.5); hg.castShadow = true; hg.receiveShadow = true; scene.add(hg);
+      hg.position.set(hx, 0.62, 82.6); hg.castShadow = true; hg.receiveShadow = true; scene.add(hg);
     }
   })();
 
@@ -3257,12 +3449,12 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       bench.add(box(2.2, 0.5, 0.08, woodM, 0, 0.78, -0.24));
       bench.add(box(0.09, 0.46, 0.5, ironM, -0.95, 0.23, 0));
       bench.add(box(0.09, 0.46, 0.5, ironM, 0.95, 0.23, 0));
-      bench.position.set(bx, 0.22, 73.5); bench.rotation.y = 0; scene.add(bench);
-      addCollider(bx, 73.5, 1.1, 0.4);
+      bench.position.set(bx, 0.22, 79.5); bench.rotation.y = 0; scene.add(bench);
+      addCollider(bx, 79.5, 1.1, 0.4);
       // litter bin beside it
       var bin = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.28, 0.85, 10), binM);
-      bin.position.set(bx + 1.7, 0.65, 73.5); bin.castShadow = true; scene.add(bin);
-      addCollider(bx + 1.7, 73.5, 0.34, 0.34);
+      bin.position.set(bx + 1.7, 0.65, 79.5); bin.castShadow = true; scene.add(bin);
+      addCollider(bx + 1.7, 79.5, 0.34, 0.34);
     }
     // bus shelter on Ocean Drive
     var shelter = new THREE.Group();
@@ -3275,8 +3467,8 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var adTex = shopSignTexture("VISIT THE AQUARIUM →", "#274b63", "#ffffff");
     var ad = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.5), new THREE.MeshBasicMaterial({ map: adTex }));
     ad.position.set(2.0, 1.3, 0.74); shelter.add(ad);
-    shelter.position.set(-24, 0.22, 61.5); scene.add(shelter);
-    addCollider(-24, 61.5, 2.7, 0.9);
+    shelter.position.set(-24, 0.22, 54.3); scene.add(shelter);
+    addCollider(-24, 54.3, 2.7, 0.9);
     // traffic lights at the two busiest crossroads — pole, head, three real lamps
     [[-44, -44], [0, 0], [44, 44], [-44, 44]].forEach(function (pt, idx) {
       var tl = new THREE.Group();
@@ -3309,10 +3501,15 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
   }
   for (var lx = -3; lx <= 3; lx++) {
     for (var lz = -3; lz <= 2; lz++) {
-      lamp(lx * BLOCK + 8.5, lz * BLOCK - BLOCK / 2 + 8.5);
+      lamp(lx * BLOCK + 8.5, lz === 2 ? 77 : lz * BLOCK - BLOCK / 2 + 8.5);
     }
   }
-  for (var ox = -156; ox <= 168; ox += 24) lamp(ox, 61);
+  // Ocean Drive boulevard: its lamps stand on the central median,
+  // following the curve, clear of the crossing gaps
+  for (var ox = -156; ox <= 168; ox += 24) {
+    if (blvdBreakDist(ox) < 9) continue;
+    lamp(ox, oceanMedianZ(ox));
+  }
   (function buildLamps() {
     var poleGeo = new THREE.CylinderGeometry(0.09, 0.12, 5.6, 6);
     poleGeo.translate(0, 2.8, 0);
@@ -3384,6 +3581,98 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     for (var i = 0; i < 160; i++) pos.push(rand(-180, 180), rand(0.6, 7), rand(-170, 90));
     dustGeo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     scene.add(new THREE.Points(dustGeo, dustMat));
+  })();
+
+  // ---------- OCEAN DRIVE — the main street, rebuilt as a boulevard ----------
+  // The beachfront main street no longer shares the flat, straight
+  // layout of the side streets: it is a wide divided boulevard. Two
+  // carriageways run either side of a raised palm median that wanders
+  // in a gentle curve (so the street is not one straight line), a wide
+  // stone sidewalk fronts the main-street buildings, zebra crossings
+  // cross at every junction, and the boulevard paints its own lane
+  // markings. The median is built in segments with gaps at the cross
+  // streets and at three mid-block pedestrian crossings, so cars and
+  // walkers can still cross it, every grid road still joins it, and
+  // every door, job point and the spawn stay reachable.
+  function oceanMedianZ(x) { return 66.75 + 2.0 * Math.sin(x / 55); }
+  function blvdBreakDist(x) {
+    var breaks = [-154, -110, -66, -22, 22, 66, 110, 154, -40, 26, 96];
+    var d = 1e9;
+    for (var i = 0; i < breaks.length; i++) d = Math.min(d, Math.abs(x - breaks[i]));
+    return d;
+  }
+  (function buildOceanDrive() {
+    // twin carriageways: one wide asphalt slab with its own finer
+    // asphalt, distinct from the city floor the side streets use
+    var blvdTex = asphaltTexture(); blvdTex.repeat.set(48, 3);
+    var slab = new THREE.Mesh(new THREE.BoxGeometry(388, 0.07, 19.4),
+      new THREE.MeshStandardMaterial({ map: blvdTex, bumpMap: blvdTex, bumpScale: 0.6, roughness: 0.82, metalness: 0.02 }));
+    slab.position.set(0, 0.035, 66); slab.receiveShadow = true; scene.add(slab);
+    // wide stone sidewalk along the building frontage
+    var walkTex = groundTexture("#b3ac9d", "rgba(130,122,105,0.6)", true); walkTex.repeat.set(52, 1);
+    var walk = new THREE.Mesh(new THREE.BoxGeometry(388, 0.24, 4.2),
+      new THREE.MeshStandardMaterial({ map: walkTex, bumpMap: walkTex, bumpScale: 0.6, roughness: 0.9, metalness: 0 }));
+    walk.position.set(0, 0.13, 54.4); walk.receiveShadow = true; scene.add(walk);
+    // central median: grass-topped kerb segments following the curve,
+    // flower beds along both edges, gaps at every crossing point
+    var medGrassTex = groundTexture("#5f7f3a", "rgba(70,95,45,0.7)", false); medGrassTex.repeat.set(3, 1);
+    var medGrassMat = new THREE.MeshStandardMaterial({ map: medGrassTex, roughness: 1 });
+    var medKerbMat = mat(0xcfc9ba, 0.85, 0);
+    var flowerMats = [mat(0xd94f70, 0.9, 0), mat(0xe8a13a, 0.9, 0), mat(0xb8452e, 0.9, 0)];
+    var segI = 0;
+    for (var mx0 = -187.1; mx0 < 187; mx0 += 9.2) {
+      var cxm = mx0 + 4.6;
+      if (blvdBreakDist(cxm) < 8.8) continue;
+      var mzc = oceanMedianZ(cxm);
+      var seg = new THREE.Group();
+      seg.add(box(9.3, 0.3, 3.9, medKerbMat, 0, 0.17, 0));
+      var grass = new THREE.Mesh(new THREE.BoxGeometry(8.7, 0.1, 3.1), medGrassMat);
+      grass.position.y = 0.35; grass.receiveShadow = true; seg.add(grass);
+      var fm = flowerMats[segI % 3];
+      seg.add(box(8.5, 0.14, 0.5, fm, 0, 0.4, -1.28, false));
+      seg.add(box(8.5, 0.14, 0.5, fm, 0, 0.4, 1.28, false));
+      seg.position.set(cxm, 0, mzc);
+      seg.rotation.y = -Math.atan((2.0 / 55) * Math.cos(cxm / 55));
+      scene.add(seg);
+      addCollider(cxm, mzc, 5.0, 1.9);
+      segI++;
+    }
+    // boulevard markings: dashed lane lines in each carriageway, solid
+    // edge lines, and zebra crossings at every gap in the median
+    var dashList = [], zebraList = [];
+    for (var dx0 = -184; dx0 <= 184; dx0 += 9) {
+      if (blvdBreakDist(dx0) < 7.5) continue;
+      dashList.push({ x: dx0, z: 61.3 }); dashList.push({ x: dx0, z: 71.3 });
+    }
+    [-154, -110, -66, -22, 22, 66, 110, 154, -40, 26, 96].forEach(function (bxz) {
+      for (var zz = 57.6; zz <= 74.6; zz += 1.18) zebraList.push({ x: bxz, z: zz });
+    });
+    var dummyB = new THREE.Object3D();
+    function paint(list, w, l) {
+      var im = new THREE.InstancedMesh(new THREE.PlaneGeometry(w, l), new THREE.MeshBasicMaterial({ color: 0xf2ead8 }), list.length);
+      list.forEach(function (d, i) {
+        dummyB.position.set(d.x, 0.078, d.z);
+        dummyB.rotation.set(-Math.PI / 2, 0, 0);
+        dummyB.updateMatrix();
+        im.setMatrixAt(i, dummyB.matrix);
+      });
+      scene.add(im);
+    }
+    paint(dashList, 3.4, 0.3);
+    paint(zebraList, 3.6, 0.55);
+    var edgeMat = new THREE.MeshBasicMaterial({ color: 0xf2ead8 });
+    [57.3, 74.7].forEach(function (ez) {
+      var edge = new THREE.Mesh(new THREE.PlaneGeometry(384, 0.3), edgeMat);
+      edge.rotation.x = -Math.PI / 2; edge.position.set(0, 0.078, ez); scene.add(edge);
+    });
+    // name boards at both ends of the median
+    [-1, 1].forEach(function (sd) {
+      var sxp = sd * 181;
+      scene.add(box(0.18, 2.6, 0.18, darkMetalMat, sxp, 1.3, oceanMedianZ(sxp)));
+      var board = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 0.95),
+        new THREE.MeshBasicMaterial({ map: shopSignTexture("OCEAN DRIVE", "#123a4a", "#ffd76a"), side: THREE.DoubleSide }));
+      board.position.set(sxp, 2.9, oceanMedianZ(sxp)); scene.add(board);
+    });
   })();
 
   // ---------- Collision resolve ----------
@@ -4416,7 +4705,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     });
     if (child) mesh.scale.setScalar(0.68);
     else mesh.scale.setScalar(rand(0.9, 1.1));   // adults vary in height, like the Unity crowd (~0.92–1.08)
-    var px = rand(-170, 170), pz = onProm ? rand(64, 75) : rand(-160, 50);
+    var px = rand(-170, 170), pz = onProm ? rand(76.5, 82.5) : rand(-160, 50);
     if (!onProm) { px = Math.round(px / BLOCK) * BLOCK + (Math.random() < 0.5 ? 9.5 : -9.5); }
     mesh.position.set(px, 0.22, pz);
     scene.add(mesh);
@@ -7376,7 +7665,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     var p = playerPos();
     if (p.z >= 104) return "The Ocean";
     if (p.z >= BEACH_Z) return "The Beach";
-    if (p.z >= 62) return "Ocean Drive Promenade";
+    if (p.z >= 75.5) return "Ocean Drive Promenade";
     for (var za = 0; za < AIRPORTS.length; za++) { if (Math.hypot(p.x - AIRPORTS[za].x, p.z - AIRPORTS[za].z) < AIRPORTS[za].r) return AIRPORTS[za].name; }
     for (var zt = 0; zt < STATIONS.length; zt++) { if (Math.hypot(p.x - STATIONS[zt].x, p.z - STATIONS[zt].z) < 17) return STATIONS[zt].name; }
     if (p.z <= -148) return "World Landmarks Park";
@@ -7388,6 +7677,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
       if (cc.rect) { if (Math.abs(p.x - cc.x) < cc.w / 2 && Math.abs(p.z - cc.z) < cc.d / 2 + 14) return cc.name; }
       else if (Math.hypot(p.x - cc.x, p.z - cc.z) < cc.r) return cc.name;
     }
+    if (p.z >= 52.3 && p.z < 75.5 && Math.abs(p.x) < 200) return "Ocean Drive Boulevard";
     if (Math.abs(p.z + 390) < 11 && Math.abs(p.x) < 452) return "Airport Road";
     if ((Math.abs(p.x + 300) < 11 || Math.abs(p.x - 300) < 11) && p.z < 84 && p.z > -390) return "Colony Highway";
     if (Math.abs(p.z + 252) < 11 && Math.abs(p.x) < 452) return "Route 66 Highway";
@@ -7408,7 +7698,7 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     // landmarks park (north strip)
     ctx.fillStyle = "#2b4530"; ctx.fillRect(0, 0, W, Y(-146));
     // promenade, sand, ocean (south)
-    ctx.fillStyle = "#8f8474"; ctx.fillRect(0, Y(62), W, Y(BEACH_Z) - Y(62));
+    ctx.fillStyle = "#8f8474"; ctx.fillRect(0, Y(75.5), W, Y(BEACH_Z) - Y(75.5));
     ctx.fillStyle = "#dcc08e"; ctx.fillRect(0, Y(BEACH_Z), W, Y(108) - Y(BEACH_Z));
     ctx.fillStyle = "#1d6f8e"; ctx.fillRect(0, Y(108), W, H - Y(108));
     // city blocks
@@ -7418,12 +7708,14 @@ window.addEventListener("DOMContentLoaded", function () { setTimeout(function ()
     }
     // roads
     ctx.strokeStyle = "#12161f"; ctx.lineWidth = Math.max(3, 12 * sx); ctx.beginPath();
-    for (var vx = -3; vx <= 3; vx++) { ctx.moveTo(X(vx * BLOCK), 0); ctx.lineTo(X(vx * BLOCK), Y(62)); }
+    for (var vx = -3; vx <= 3; vx++) { ctx.moveTo(X(vx * BLOCK), 0); ctx.lineTo(X(vx * BLOCK), Y(75.5)); }
     for (var hz = -3; hz <= 0; hz++) { ctx.moveTo(0, Y(hz * BLOCK)); ctx.lineTo(W, Y(hz * BLOCK)); }
-    ctx.moveTo(0, Y(58)); ctx.lineTo(W, Y(58));
     ctx.stroke();
+    // Ocean Drive boulevard: twin carriageways with a green median strip
+    ctx.fillStyle = "#12161f"; ctx.fillRect(0, Y(56.5), W, Y(75.5) - Y(56.5));
+    ctx.fillStyle = "#3d6b2f"; ctx.fillRect(0, Y(65.1), W, Y(68.4) - Y(65.1));
     ctx.strokeStyle = "rgba(255,176,32,.75)"; ctx.lineWidth = 1.4; ctx.beginPath();
-    ctx.moveTo(0, Y(58)); ctx.lineTo(W, Y(58)); ctx.stroke();
+    ctx.moveTo(0, Y(61)); ctx.lineTo(W, Y(61)); ctx.moveTo(0, Y(71)); ctx.lineTo(W, Y(71)); ctx.stroke();
     function dot(x, z, color, r, ring) {
       ctx.beginPath(); ctx.arc(X(x), Y(z), r, 0, Math.PI * 2);
       ctx.fillStyle = color; ctx.fill();

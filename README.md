@@ -24,7 +24,7 @@ Once installed, the game opens fullscreen from your home screen / app list.
 
 ## What is in this repo
 
-- `index.html` — the whole game in one file (about 4.4 MB). It contains the
+- `index.html` — the whole game in one file (about 4.5 MB). It contains the
   city, 20 colonies, the train and stations, two airports, highways,
   buildings, interiors, landmarks, the supercar, the bike, people, jobs,
   camera views and install support. That is why there are no separate source
@@ -132,3 +132,12 @@ taskbar, tap again or Esc to come out, and the icon changes.
   planes; four highways with dividers and exit signs; and working
   red / amber / green traffic signals at 8 junctions that traffic
   obeys.
+- Ocean Drive main street rebuilt as a divided boulevard: a curved
+  grass median with palms, two carriageways, a wide stone sidewalk,
+  zebra crossings at every cross street plus 3 mid-block crossings,
+  and 7 different buildings along it — low beach shops with signs
+  and awnings, six-storey brick flats with balconies, a tall
+  curved-corner glass tower with set-back tiers, a stepped art-deco
+  hotel, an angled-bay block with a sloped roof, white balcony flats
+  with a pergola roof, and a slim spire tower on a podium — all
+  with working doors.
